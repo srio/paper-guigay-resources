@@ -1,0 +1,1 @@
+# paper-guigay-resources
