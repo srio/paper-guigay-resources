@@ -1,0 +1,45 @@
+xsz=32; ysz=16.0
+!xsz=18; ysz=24.7
+size xsz ysz
+!
+
+!###############################################################################
+
+
+set font texcmr hei 0.75      ! font "computer modern roman" size
+!
+! create graph
+!
+!amove -1 7.6
+amove -1 0
+begin graph
+!        scale auto
+        !size xsz+4 10.6             !Sets the size of the graph in cm
+        !
+        ! titles
+        !
+        ytitle "D_h(0,q)"
+        xtitle "q [mm]"
+        !
+        ! axes & limits
+        !
+        xaxis min -3000 max 3000  dticks 2500
+        yaxis min 0 max 0.45  dticks 0.05 
+        !
+        ! reads data
+        !
+        data "points3.txt" d1=c1,c2
+        data "points4.txt" d2=c1,c2
+        !data "epsilon_scan_full_montel_H1p5V1p5.dat" d2=c1,c3
+
+        !
+        ! plot data
+        !
+        d1 line color blue    !lstyle 4 color blue
+        d2 line color green   !lstyle 4 color blue
+        !d3 line color black    lstyle 5 ! color blue
+end graph                               
+
+!
+! legend
+!
