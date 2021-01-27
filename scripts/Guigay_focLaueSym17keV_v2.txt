@@ -1,0 +1,77 @@
+(* 03/05/19 Lauesym17; Si111 17kev, distances in mm, p source distance, q observation distance *)
+ClearAll;teta=6.678539*(Pi/180);
+lambda=0.7293259*10^-7;k=2*Pi/lambda;h=2*k*Sin[teta];
+chizero=Conjugate[-0.335984*10^-5-I*0.177494*10^-7];
+chih=Conjugate[(-0.128146+I*0.126392)*10^-5];chihm=-I*chih;chih2=chih*chihm;
+
+t=0.3;p=50000;rayon=1000;raygam=rayon*Cos[teta];{"raygam",raygam}
+sym=k*Sqrt[chih2]/Sin[2*teta];attsym=Exp[-k*Im[chizero]*t/Cos[teta]];{"attsym",attsym}
+asym=t*Sin[teta];{"asym,halfwith of reflected beam",asym}
+zasym=sym*asym;{"zasym",zasym}
+qzero=asym*Sin[2*teta]/Re[Sqrt[chih2]];{"qzero, dynamical focal length",qzero}
+qpoly=p*raygam/(2*p+raygam);{"qpoly, polychromatic focal distance",qpoly}
+pe=p*raygam/(raygam+p);lesym[q_]:=pe+raygam*q/(raygam-q);{"pe",pe}
+
+psizero[x_,q_]:=2*NIntegrate[BesselJ[0,sym*Sqrt[(asym+v)*(asym-v)]]*Exp[I*k*0.5*(v-x)^2/q],{v,0,asym}];
+Plot[attsym*Abs[psizero[0,q]^2/(lambda*q)],{q,500,5000},AxesOrigin->{0,0},PlotRange->All,PlotStyle->{RGBColor[1,0,0]}]
+Plot[attsym*Abs[psizero[0,q]^2/(lambda*q)],{q,-5000,-500},AxesOrigin->{0,0},PlotRange->All,PlotStyle->{RGBColor[1,0,0]}]
+
+psipinfini[x_,q_]:=2*NIntegrate[BesselJ[0,sym*Sqrt[(asym+v)*(asym-v)]]*Exp[I*k*0.5*v^2*(raygam-q)/raygam^2]*Cos[k*v*x/raygam],{v,0,asym}];
+intpinf=Plot[attsym*Abs[psipinfini[0,q]^2/(lambda*raygam)],{q,0,3000},AxesOrigin->{0,0},PlotRange->All,PlotStyle->{RGBColor[1,0,0]}]
+
+psisym[x_,q_]:=2*NIntegrate[BesselJ[0,sym*Sqrt[(asym+v)*(asym-v)]]*Exp[I*k*0.5*v^2/lesym[q]]*Cos[k*v*x*p/(pe*(p+q))],{v,0,asym}];
+intpfini=Plot[attsym*Abs[psisym[0,q]^2/(lambda*(p+q))],{q,0,3000},AxesOrigin->{0,0},PlotRange->All,PlotStyle->{RGBColor[0,1,0]}]
+(* Show[intpinf,intpfini] *)
+
+
+{raygam,993.214}
+{attsym,0.630104}
+{asym,halfwith of reflected beam,0.0348896}
+{zasym,23.4177 -0.161369 I}
+{qzero, dynamical focal length,4478.23}
+{qpoly, polychromatic focal distance,491.723}
+{pe,973.869}
+
+
+
+
+
+
+
+
+
+
+
+points=Table[{q,attsym*Abs[psizero[0,q]^2/(lambda*q)]},{q,Range[500,5000,2]}];
+Export["points.txt",points,"Table"]
+points2=Table[{q,attsym*Abs[psizero[0,q]^2/(lambda*q)]},{q,Range[-5000,500,2]}];
+Export["points2.txt",points2,"Table"]
+
+points3=Table[{q,attsym*Abs[psipinfini[0,q]^2/(lambda*raygam)] },{q,Range[0,3000,2]}];
+Export["points3.txt",points3,"Table"]
+points4=Table[{q,attsym*Abs[psipinfini[0,q]^2/(lambda*raygam)] },{q,Range[-3000,0,2]}];
+Export["points4.txt",points4,"Table"]
+points.txt
+NIntegrate::ncvb: NIntegrate failed to converge to prescribed accuracy after 9 recursive bisections in v near {v} = {0.}. NIntegrate obtained -0.0000393973+0.0000332417 I and 9.317248718283451`*^-7 for the integral and error estimates. >>
+NIntegrate::ncvb: NIntegrate failed to converge to prescribed accuracy after 9 recursive bisections in v near {v} = {0.}. NIntegrate obtained -0.0000316117+0.0000340889 I and 8.37038752053597`*^-7 for the integral and error estimates. >>
+NIntegrate::ncvb: NIntegrate failed to converge to prescribed accuracy after 9 recursive bisections in v near {v} = {0.}. NIntegrate obtained -4.49766*10^-6+0.0000330271 I and 1.01306469586539`*^-6 for the integral and error estimates. >>
+General::stop: Further output of NIntegrate::ncvb will be suppressed during this calculation. >>
+Power::infy: Infinite expression 1/0 encountered. >>
+Infinity::indet: Indeterminate expression E^ComplexInfinity encountered. >>
+NIntegrate::inumri: The integrand Indeterminate has evaluated to Overflow, Indeterminate, or Infinity for all sampling points in the region with boundaries {{0,0.0348896}}. >>
+Power::infy: Infinite expression 1/0 encountered. >>
+Infinity::indet: Indeterminate expression E^ComplexInfinity encountered. >>
+NIntegrate::inumri: The integrand Indeterminate has evaluated to Overflow, Indeterminate, or Infinity for all sampling points in the region with boundaries {{0,0.0348896}}. >>
+Power::infy: Infinite expression 1/0 encountered. >>
+General::stop: Further output of Power::infy will be suppressed during this calculation. >>
+Infinity::indet: Indeterminate expression E^ComplexInfinity encountered. >>
+General::stop: Further output of Infinity::indet will be suppressed during this calculation. >>
+NIntegrate::inumri: The integrand Indeterminate has evaluated to Overflow, Indeterminate, or Infinity for all sampling points in the region with boundaries {{0,0.0348896}}. >>
+General::stop: Further output of NIntegrate::inumri will be suppressed during this calculation. >>
+points2.txt
+points3.txt
+points4.txt
+Export["points4.txt",points4,"Table"]
+points4.txt
+ExpandFileName["points4.txt"]
+/mnt/multipath-shares/scisoft/users/srio/OASYS1.2/paper-guigay-resources/figures/points4.txt

@@ -18,27 +18,28 @@ begin graph
         !
         ! titles
         !
-        ytitle "\tex{$|D_h(0,q)|^2$}"
-        xtitle "\tex{$q$} [mm]"
+        ytitle "\tex{$|D_h(\xi,q=q_{1,2})|^2$}"
+        xtitle "\tex{$\xi$} [mm]"
         !
         ! axes & limits
         !
-        xaxis min 0 max 3000  dticks 2500
-        yaxis min 0 max 0.0075  dticks 0.005
+        xaxis min -0.02 max 0.02  dticks 0.005
+        yaxis min 0 max 0.0075 dticks 0.005
         !
         ! reads data
         !
-        data "../scripts/mypoints3_17keV.txt" d1=c1,c2
-        !data "epsilon_scan_full_montel_H1p5V1p5.dat" d2=c1,c3
+        data "../scripts/mypoints4_17keV.txt" d1=c1,c2
+        data "../scripts/mypoints44_17keV.txt" d2=c1,c2
 
         !
         ! plot data
         !
         d1 line color blue    !lstyle 4 color blue
-        !d2 line color blue   !lstyle 4 color blue
+        d2 line color green   !lstyle 4 color blue
         !d3 line color black    lstyle 5 ! color blue
 end graph                               
 
 !
 ! legend
 !
+

@@ -18,8 +18,8 @@ begin graph
         !
         ! titles
         !
-        ytitle "D_h(0,q)"
-        xtitle "q [mm]"
+        ytitle "\tex{$|D_h(0,q)|^2$}"
+        xtitle "\tex{$q$} [mm]"
         !
         ! axes & limits
         !
@@ -28,15 +28,17 @@ begin graph
         !
         ! reads data
         !
-        data "points.txt" d1=c1,c2
-        data "points2.txt" d2=c1,c2
+        ! data "points.txt" d1=c1,c2
+        data "../scripts/mypoints1_17keV_negative.txt" d1=c1,c2
+        data "../scripts/mypoints1_17keV_positive.txt" d2=c1,c2
+        ! data "points2.txt" d2=c1,c2
         !data "epsilon_scan_full_montel_H1p5V1p5.dat" d2=c1,c3
 
         !
         ! plot data
         !
         d1 line color blue    !lstyle 4 color blue
-        d2 line color green   !lstyle 4 color blue
+        d2 line color blue    !lstyle 4 color blue
         !d3 line color black    lstyle 5 ! color blue
 end graph                               
 
