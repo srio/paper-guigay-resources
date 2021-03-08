@@ -1,4 +1,4 @@
-xsz=32; ysz=16.0
+xsz=35; ysz=16.0
 !xsz=18; ysz=24.7
 size xsz ysz
 !
@@ -6,7 +6,7 @@ size xsz ysz
 !###############################################################################
 
 
-set font texcmr hei 0.75      ! font "computer modern roman" size
+set font texcmr hei 0.95      ! font "computer modern roman" size
 !
 ! create graph
 !
@@ -18,8 +18,8 @@ begin graph
         !
         ! titles
         !
-        ytitle "\tex{$|D_h(\xi,q=567.567)|^2$}"
-        xtitle "\tex{$\xi$} [mm]"
+        ytitle "\tex{$|D_h(\xi-\xi_c,q=q_{1,2})|^2$}"
+        xtitle "\tex{$\xi-\xi_c$} [mm]"
         !
         ! axes & limits
         !
@@ -29,14 +29,13 @@ begin graph
         ! reads data
         !
         data "../scripts/mypoints4_8keV.txt" d1=c1,c2
-        !data "epsilon_scan_full_montel_H1p5V1p5.dat" d2=c1,c3
+        data "../scripts/mypoints4_8keV.txt" d2=c1,c3
 
         !
         ! plot data
         !
         d1 line color blue    !lstyle 4 color blue
-        d2 line color blue   !lstyle 4 color blue
-        !d3 line color black    lstyle 5 ! color blue
+        d2 line color green   !lstyle 4 color blue
 end graph                               
 
 !

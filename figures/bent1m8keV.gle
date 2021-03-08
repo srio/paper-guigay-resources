@@ -1,4 +1,4 @@
-xsz=32; ysz=16.0
+xsz=35; ysz=16.0
 !xsz=18; ysz=24.7
 size xsz ysz
 !
@@ -6,7 +6,7 @@ size xsz ysz
 !###############################################################################
 
 
-set font texcmr hei 0.75      ! font "computer modern roman" size
+set font texcmr hei 0.95      ! font "computer modern roman" size
 !
 ! create graph
 !
@@ -18,13 +18,13 @@ begin graph
         !
         ! titles
         !
-        ytitle "\tex{$|D_h(0,q)|^2$}"
+        ytitle "\tex{$|D_h(\xi_c,q)|^2$}"
         xtitle "\tex{$q$} [mm]"
         !
         ! axes & limits
         !
-        xaxis min 0 max 3000  dticks 1000
-        yaxis min 0 max 0.0015  dticks 0.005
+        xaxis min 0 max 3000  dticks 500
+        yaxis min 0 max 0.0015  dticks 0.0005
         !
         ! reads data
         !

@@ -6,7 +6,7 @@ size xsz ysz
 !###############################################################################
 
 
-set font texcmr hei 0.75      ! font "computer modern roman" size
+set font texcmr hei 0.95      ! font "computer modern roman" size
 !
 ! create graph
 !
@@ -24,7 +24,7 @@ begin graph
         ! axes & limits
         !
         xaxis min -5000 max 5000  dticks 2500
-        yaxis min 0 max 0.04  dticks 0.01
+        yaxis min 0 max 0.03  dticks 0.01
         !
         ! reads data
         !

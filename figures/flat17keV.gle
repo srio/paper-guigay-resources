@@ -6,7 +6,7 @@ size xsz ysz
 !###############################################################################
 
 
-set font texcmr hei 0.75      ! font "computer modern roman" size
+set font texcmr hei 0.95      ! font "computer modern roman" size
 !
 ! create graph
 !
