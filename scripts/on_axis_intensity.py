@@ -4,7 +4,9 @@ from scipy.special import jv as BesselJ
 import scipy.constants as codata
 from crystal_data import get_crystal_data
 import scipy.constants as codata
-from srxraylib.plot.gol import plot
+from srxraylib.plot.gol import plot, set_qt
+
+set_qt()
 
 
 
@@ -176,7 +178,7 @@ if __name__ == "__main__":
         plot(qq,yy)
 
     # This is for Fig 5. q-scan...
-    if False:
+    if True:
         # intpfini=Plot[attsym*Abs[psisym[0,q]^2/(lambda*(p+q))],{q,0,3000},AxesOrigin->{0,0},PlotRange->All,PlotStyle->{RGBColor[0,1,0]}]
         qq = numpy.linspace(0, 3000, 1000)
         filename = 'mypoints3_%dkeV.txt' % photon_energy_in_keV
@@ -192,8 +194,38 @@ if __name__ == "__main__":
         print_max(qq[nn // 3:-1], yy[nn // 3:-1])
         plot(qq, yy)
 
+        #
+        #  compare position of best focus with eqs XXX from the paper
+        #
+        print(">>>>>R, q0, p, ", rayon, qzero, p)
+        q1 = rayon * (p * (qzero - rayon) + qzero * rayon) / (p * qzero + (rayon + qzero) * rayon)
+        q2 = rayon * (p * (qzero + rayon) + qzero * rayon) / (p * qzero + (qzero - rayon) * rayon)
+        print(">>>>> q1, q2: ", q1, q2)
 
-    if True:
+        # these are the values from the run with the flat crystal
+        if photon_energy_in_keV > 10:
+            qzero_numerical = 2559.0
+        else:
+            qzero_numerical = 2862.0
+        print(">>>>> Energy, R, q0 NUMERICAL, p, ", photon_energy_in_keV, rayon, qzero_numerical, p)
+        q1 = rayon * (p * (qzero_numerical - rayon) + qzero_numerical * rayon) / (p * qzero_numerical + (rayon + qzero_numerical) * rayon)
+        q2 = rayon * (p * (qzero_numerical + rayon) + qzero_numerical * rayon) / (p * qzero_numerical + (qzero_numerical - rayon) * rayon)
+        print(">>>>> Calculated q1, q2 using Eqs XXX: ", q1, q2)
+
+
+        #
+        # calculate xi_c
+        #
+        pe = 1 / (1 / p + 1 / (rayon * numpy.cos(teta)))
+        qe = 1 / (1 / qq - 1 / (rayon * numpy.cos(teta)))
+        Le = pe + qe
+        xi_c = - asym * qq * Le / (2 * qe * rayon * numpy.cos(teta))
+
+        plot(qq,xi_c/asym,title=">>>>>>>>>xi_e")
+        print(">>>>",teta, 180*teta/numpy.pi, qq[1], xi_c[1])
+
+
+    if False:
         # intpfini=Plot[attsym*Abs[psisym[0,q]^2/(lambda*(p+q))],{q,0,3000},AxesOrigin->{0,0},PlotRange->All,PlotStyle->{RGBColor[0,1,0]}]
         # qq = numpy.linspace(0, 3000, 1000)
         xi = numpy.linspace(-0.02,0.02, 1000)
