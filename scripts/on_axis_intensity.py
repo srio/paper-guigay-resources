@@ -60,6 +60,7 @@ def psisym(x,q):
 def print_max(xx,yy):
     i = numpy.argmax(yy)
     print("Maxumum found at x=%g, y=%g" % (xx[i],yy[i]))
+    return xx[i]
 
 
 if __name__ == "__main__":
@@ -189,28 +190,31 @@ if __name__ == "__main__":
             f.write("%g %g\n" % (qq[j], yy[j]))
         f.close()
         print("File written to disk: %s" % filename)
-        print_max(qq, yy)
+        q1num = print_max(qq, yy)
         nn = qq.size
-        print_max(qq[nn // 3:-1], yy[nn // 3:-1])
+        q2num = print_max(qq[nn // 3:-1], yy[nn // 3:-1])
         plot(qq, yy)
 
         #
         #  compare position of best focus with eqs XXX from the paper
         #
-        print(">>>>>R, q0, p, ", rayon, qzero, p)
-        q1 = rayon * (p * (qzero - rayon) + qzero * rayon) / (p * qzero + (rayon + qzero) * rayon)
-        q2 = rayon * (p * (qzero + rayon) + qzero * rayon) / (p * qzero + (qzero - rayon) * rayon)
-        print(">>>>> q1, q2: ", q1, q2)
+        # print(">>>>>R, q0, p, ", rayon, qzero, p)
+        # q1 = rayon * (p * (qzero - rayon) + qzero * rayon) / (p * qzero + (rayon + qzero) * rayon)
+        # q2 = rayon * (p * (qzero + rayon) + qzero * rayon) / (p * qzero + (qzero - rayon) * rayon)
+        # print(">>>>> q1, q2: ", q1, q2)
 
-        # these are the values from the run with the flat crystal
+        # these are the values using qdyn from the run with the flat crystal
         if photon_energy_in_keV > 10:
             qzero_numerical = 2559.0
         else:
             qzero_numerical = 2862.0
         print(">>>>> Energy, R, q0 NUMERICAL, p, ", photon_energy_in_keV, rayon, qzero_numerical, p)
-        q1 = rayon * (p * (qzero_numerical - rayon) + qzero_numerical * rayon) / (p * qzero_numerical + (rayon + qzero_numerical) * rayon)
-        q2 = rayon * (p * (qzero_numerical + rayon) + qzero_numerical * rayon) / (p * qzero_numerical + (qzero_numerical - rayon) * rayon)
+        rayonPrime = rayon * numpy.cos(teta)
+        q1 = rayonPrime * (p * (qzero_numerical - rayonPrime) + qzero_numerical * rayonPrime) / (p * qzero_numerical + (qzero_numerical + rayonPrime) * rayonPrime)
+        q2 = rayonPrime * (p * (qzero_numerical + rayonPrime) + qzero_numerical * rayonPrime) / (p * qzero_numerical + (qzero_numerical - rayonPrime) * rayonPrime)
         print(">>>>> Calculated q1, q2 using Eqs XXX: ", q1, q2)
+        print(">>>>> Numerical q1, q2 from plot: ", q1num, q2num)
+        print(">>>>> error in percent: ", 100*(q1-q1num)/q1num, 100*(q2-q2num)/q2num)
 
 
         #
@@ -221,8 +225,9 @@ if __name__ == "__main__":
         Le = pe + qe
         xi_c = - asym * qq * Le / (2 * qe * rayon * numpy.cos(teta))
 
-        plot(qq,xi_c/asym,title=">>>>>>>>>xi_e")
-        print(">>>>",teta, 180*teta/numpy.pi, qq[1], xi_c[1])
+        # plot(qq,xi_c/asym,title=">>>>>>>>>xi_e")
+        # print(">>>>",teta, 180*teta/numpy.pi, qq[1], xi_c[1])
+        # print(">>>> TEST EQ 24 VS CODE psixxx: ", qq.size, qe.size, qe/qq/lesym(qq) - p / pe / (p + qq))
 
 
     if False:
