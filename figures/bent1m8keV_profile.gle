@@ -7,6 +7,7 @@ size xsz ysz
 
 
 set font texcmr hei 0.95      ! font "computer modern roman" size
+set lwidth 0.04
 !
 ! create graph
 !
@@ -35,7 +36,7 @@ begin graph
         ! plot data
         !
         d1 line color blue    !lstyle 4 color blue
-        d2 line color green   !lstyle 4 color blue
+        d2 line color red   !lstyle 4 color blue
 end graph                               
 
 !

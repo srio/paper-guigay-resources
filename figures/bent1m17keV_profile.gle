@@ -7,6 +7,7 @@ size xsz ysz
 
 
 set font texcmr hei 0.95      ! font "computer modern roman" size
+set lwidth 0.04
 !
 ! create graph
 !
@@ -24,7 +25,7 @@ begin graph
         ! axes & limits
         !
         xaxis min -0.02 max 0.02  dticks 0.005
-        yaxis min 0 max 0.0075 dticks 0.005
+        yaxis min 0 max 0.0075 dticks 0.0025
         !
         ! reads data
         !
@@ -35,7 +36,7 @@ begin graph
         ! plot data
         !
         d1 line color blue    !lstyle 4 color blue
-        d2 line color green   !lstyle 4 color blue
+        d2 line color red   !lstyle 4 color blue
         !d3 line color black    lstyle 5 ! color blue
 end graph                               
 
