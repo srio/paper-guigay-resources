@@ -38,7 +38,15 @@ if __name__ == "__main__":
     from crystal_data import get_crystal_data
     from srxraylib.plot.gol import plot, set_qt, plot_show
 
-    do_calculate = 0
+
+
+    photon_energy_in_keV = 17.0
+    # photon_energy_in_keV = 8.3
+
+    filename = "crystal_amplitude_%d.h5" % (1e3 * photon_energy_in_keV)
+
+
+    do_calculate = 1
 
     if do_calculate:
         set_qt()
@@ -46,8 +54,7 @@ if __name__ == "__main__":
         #
         # inputs (in mm) ===========================================================
         #
-        photon_energy_in_keV = 17.0
-        photon_energy_in_keV = 8.3
+
         thickness = 0.250 # mm
 
 
@@ -98,25 +105,25 @@ if __name__ == "__main__":
         # this part uses the source at p=finite, R finite, and calculates I(xi, qdyn) and I(focus,q) to obtain qdyn
         #
         if True:
-            # qq = numpy.linspace(0, 3000, 1000)
-            # yy = numpy.zeros_like(qq)
-            #
-            # for j in range(qq.size):
-            #     yy[j] = attsym / (lambda1 * (p + qq[j])) * numpy.abs(integral_psisym(0, qq[j],
-            #                                                 Z=Zsym, a=asym, RcosTheta=raygam, p=p, on_x_at_maximum=1)) ** 2
-            #
-            # q_lensequation = 1.0 / (2 / raygam - 1 / p)
-            # plot(qq, yy,
-            #      [q_lensequation, q_lensequation], [0, yy.max()], legend=['Dynamical theory', 'Lens equation'],
-            #      xtitle='q [mm]', ytitle="Intensity on axis", title="R=%g mm p=%g mm" % (rayon, p), show=0)
-            # qdyn, _, imax  = get_max(qq, yy)
+            qq = numpy.linspace(0, 3000, 1000)
+            yy = numpy.zeros_like(qq)
+
+            for j in range(qq.size):
+                yy[j] = attsym / (lambda1 * (p + qq[j])) * numpy.abs(integral_psisym(0, qq[j],
+                                                            Z=Zsym, a=asym, RcosTheta=raygam, p=p, on_x_at_maximum=1)) ** 2
+
+            q_lensequation = 1.0 / (2 / raygam - 1 / p)
+            plot(qq, yy,
+                 [q_lensequation, q_lensequation], [0, yy.max()], legend=['Dynamical theory', 'Lens equation'],
+                 xtitle='q [mm]', ytitle="Intensity on axis", title="R=%g mm p=%g mm" % (rayon, p), show=0)
+            qdyn, _, imax  = get_max(qq, yy)
 
 
             xi = numpy.linspace(-asym, asym, 2000)
             yy1 = numpy.zeros_like(xi)
             for j in range(xi.size):
-                yy1[j] = attsym / (lambda1 * (p + 651.652)) * \
-                         numpy.abs(integral_psisym(xi[j], 651.652,
+                yy1[j] = attsym / (lambda1 * (p + qdyn)) * \
+                         numpy.abs(integral_psisym(xi[j], qdyn,
                                                    Z=Zsym, a=asym, RcosTheta=raygam, p=p)) ** 2
 
             yy2_ampl = numpy.zeros_like(xi, dtype=complex)
@@ -133,9 +140,10 @@ if __name__ == "__main__":
             output_wavefront = GenericWavefront1D.initialize_wavefront_from_arrays(
                 1e-3 * xi, yy2_ampl, y_array_pi=None, wavelength=1e-10)
             output_wavefront.set_photon_energy(1e3 * photon_energy_in_keV)
-            output_wavefront.save_h5_file("crystal_amplitude.h5",subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
+            output_wavefront.save_h5_file(filename,
+                                          subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
 
-            plot(xi, yy1, xi, yy2, legend=['q=%.1f' % 651.652, 'q=0'],
+            plot(xi, yy1, xi, yy2, legend=['q=%.1f' % qdyn, 'q=0'],
                  xtitle='xi [mm]', ytitle="Intensity",
                  title="xi scan R=%g mm, p=%.1f, ReflInt = %g" % (rayon, p, yy1.sum() * (xi[1] - xi[0])),
                  show=0)
@@ -173,7 +181,7 @@ if __name__ == "__main__":
     #
 
 
-    output_wavefront = GenericWavefront1D.load_h5_file("crystal_amplitude.h5")
+    output_wavefront = GenericWavefront1D.load_h5_file(filename)
 
 
     if plot_from_oe <= 0: plot(output_wavefront.get_abscissas(), output_wavefront.get_intensity(), title='SOURCE', show=0)

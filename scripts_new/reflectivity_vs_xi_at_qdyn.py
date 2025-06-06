@@ -68,7 +68,7 @@ if __name__ == "__main__":
     # inputs (in mm) ===========================================================
     #
     photon_energy_in_keV = 17.0
-    photon_energy_in_keV = 8.3
+    # photon_energy_in_keV = 8.3
     thickness = 0.250 # mm
 
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     if False:
         for tmp in ["positive"]:
             if tmp == "negative":
-                qq = numpy.linspace(-5000, -200, 1000)
+                qq = numpy.linspace(-5000, -200, 100)
             elif tmp == "positive":
                 qq = numpy.linspace(20, 5000, 100)
 
@@ -192,13 +192,14 @@ if __name__ == "__main__":
 
         yy2_ampl = numpy.zeros_like(xi, dtype=complex)
         yy2 = numpy.zeros_like(xi)
+        qposition = 0.480e3 # 0.548e3 # 0.0
         for j in range(xi.size):
-            yy2_ampl[j] = numpy.sqrt(attsym / (lambda1 * (p + 0.0))) * \
-                          integral_psisym(xi[j], 0.0, Z=Zsym, a=asym, RcosTheta=raygam, p=p)
+            yy2_ampl[j] = numpy.sqrt(attsym / (lambda1 * (p + qposition))) * \
+                          integral_psisym(xi[j], qposition, Z=Zsym, a=asym, RcosTheta=raygam, p=p)
             yy2[j] =  numpy.abs(yy2_ampl[j]) ** 2
         print(yy2)
 
-        plot(xi, yy1, xi, yy2, legend=['q=%.1f' % qq[imax], 'q=0'],
+        plot(xi, yy1, xi, yy2, legend=['q=%.1f mm' % qq[imax], 'q=%0.1f mm' % qposition],
              xtitle='xi [mm]', ytitle="Intensity",
              title="xi scan R=%g mm, p=%.1f, ReflInt = %g" % (rayon, p, yy1.sum() * (xi[1] - xi[0])),
              show=0)
