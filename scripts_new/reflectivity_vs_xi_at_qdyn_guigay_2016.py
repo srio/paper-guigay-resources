@@ -119,7 +119,7 @@ def run_symmetric():
              [q_lensequation, q_lensequation], [0, yy.max()], legend=['Dynamical theory', 'Lens equation'],
              xtitle='q [mm]', ytitle="Intensity on axis", title="R=%g mm p=%g mm" % (rayon, p), show=0)
 
-        if 1: # lateal scan (I vs chi)
+        if 1: # lateral scan (I vs chi)
             qdyn, _, imax  = get_max(qq, yy)
             xi = numpy.linspace(-0.02, 0.02, 1000)
             yy1 = numpy.zeros_like(xi)
@@ -277,12 +277,24 @@ if __name__ == "__main__":
     invle = lambda q: 1 / q - mu1 / rayon
 
     # q-scan
-    qq = numpy.linspace(100, 5000, 200)
-    yy = numpy.zeros_like(qq)
-    for j in range(qq.size):
-        yy[j] = Abs(sgplus(0, qq[j]) ** 2 * att / (lambda1 * qq[j]))
-        print(j, qq[j], yy[j])
-    plot(qq, yy)
+    if 1:
+        qq = numpy.linspace(100, 5000, 500)
+        yy = numpy.zeros_like(qq)
+        for j in range(qq.size):
+            yy[j] = Abs(sgplus(0, qq[j]) ** 2 * att / (lambda1 * qq[j]))
+            print(j, qq[j], yy[j])
+        plot(qq, yy)
+        qdyn, _, imax = get_max(qq, yy)
+
+    # x-scan
+    if 0:
+        xx = numpy.linspace(-2.5e-3, 2.5e-3, 200)
+        yy = numpy.zeros_like(xx)
+        qposition = 1679.0
+        for j in range(xx.size):
+            yy[j] = Abs(sgplus(xx[j], qposition) ** 2 * att / (lambda1 * qposition))
+            print(j, xx[j], yy[j])
+        plot(xx, yy)
 
 
 # intplus =
