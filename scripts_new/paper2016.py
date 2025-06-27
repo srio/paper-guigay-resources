@@ -3,11 +3,12 @@
 #
 
 import numpy
+import mpmath
 from scipy.special import jv as BesselJ
 import scipy.constants as codata
 from crystal_data import get_crystal_data
 from srxraylib.plot.gol import plot, set_qt, plot_show
-import mpmath
+
 
 # sgplus[x_, q_] :=
 #   2*NIntegrate[
@@ -17,9 +18,12 @@ import mpmath
 def sgplus(x, q):
     v = numpy.linspace(0, a, 1000)
     y = numpy.zeros_like(v, dtype=complex)
+
+    invle = 1 / q - mu1 / R
+
     for i in range(v.size):
         y[i] = mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (v[i] / a)**2)) * \
-            numpy.exp(1j * k * 0.5 * v[i]**2 * invle(q)) * numpy.cos(k * v[i] * (x / q - 1j * kiny))
+            numpy.exp(1j * k * 0.5 * v[i]**2 * invle) * numpy.cos(k * v[i] * (x / q - 1j * kiny))
     return 2 * numpy.trapz(y, x=v)
 
 # curved symmetric Laue, source at finite p
@@ -51,7 +55,6 @@ def get_max(xx, yy, verbose=1):
     return xx[i], yy[i], i
 
 def run_symmetric(plot_inset=1):
-
     #
     # inputs (in mm) ===========================================================
     #
@@ -61,16 +64,13 @@ def run_symmetric(plot_inset=1):
 
     p = 0.0 # mm
 
-    crystal_id="Si"
-    hkl=[1,1,1]
-
     #
     # end inputs ===========================================================
     #
-    teta, chizero, chih = get_crystal_data(crystal_id, hkl=hkl, photon_energy_in_keV=photon_energy_in_keV, verbose=False)
+    teta, chizero, chih = get_crystal_data("Si", hkl=[1,1,1], photon_energy_in_keV=photon_energy_in_keV, verbose=False)
     lambda1 = codata.h * codata.c / codata.e / (photon_energy_in_keV * 1e3) * 1e3 # in mm
     print("photon_energy_in_keV:", photon_energy_in_keV)
-    print("Crystal %s %d%d%d" % (crystal_id, hkl[0], hkl[1], hkl[2]))
+    print("CrystalSi 111")
     print(">>>>>>>>>> teta_deg:", teta * 180 / numpy.pi)
     print(">>>>>>>>>> chizero:", chizero)
     print(">>>>>>>>>> chih:", chih)
@@ -143,8 +143,6 @@ def run_symmetric(plot_inset=1):
     plot_show()
 
 if __name__ == "__main__":
-    import mpmath
-
     #
     # test Kummer
     #
@@ -163,23 +161,36 @@ if __name__ == "__main__":
     #
     # alpha=0
     #
-    if 0:
-        run_symmetric(plot_inset=1)
+    if False: run_symmetric(plot_inset=1)
 
     #
-    # asymmetric
+    # asymmetric Fig. 2
     #
 
     #
     # inputs (in mm) ===========================================================
     #
-    if 1:
-        teta = 1.4161222418 * numpy.pi / 180
-        lambda1 = 0.01549817566e-6
+    if True:
+        # teta = 1.4161222418 * numpy.pi / 180
+        # lambda1 = 0.01549817566e-6
+        # chizero = -0.150710e-6 + 1j * 0.290718e-10
+        # chih = numpy.conjugate(-5.69862 + 1j * 5.69574) * 1e-8
+
+        photon_energy_in_keV = 80.0
+        teta, chizero, chih = get_crystal_data("Si", hkl=[1, 1, 1], photon_energy_in_keV=photon_energy_in_keV,
+                                               verbose=False)
+        lambda1 = codata.h * codata.c / codata.e / (photon_energy_in_keV * 1e3) * 1e3  # in mm
+        print("photon_energy_in_keV:", photon_energy_in_keV)
+        print("CrystalSi 111")
+        print(">>>>>>>>>> teta_deg:", teta * 180 / numpy.pi)
+        print(">>>>>>>>>> chizero:", chizero)
+        print(">>>>>>>>>> chih:", chih)
+        print(">>>>>>>>>> lambda1:", lambda1)
+
+
         k = 2 * numpy.pi / lambda1
         h = 2 * k * numpy.sin(teta)
-        chizero = -0.150710e-6 + 1j * 0.290718e-10
-        chih = numpy.conjugate(-5.69862 + 1j * 5.69574) * 1e-8
+
         chimh = -1j * chih;
         chih2 = chih * chimh
         u2 = 0.25 * chih2 * k**2
@@ -208,39 +219,28 @@ if __name__ == "__main__":
         qpoly = p * R * gam2 / (2 * p + R * gam1)
         att = numpy.exp(-k * 0.5 * (t1 + t2) * numpy.imag(chizero))
         s2max = 0.25 * t1 * t2
-        u2max = u2 * s2max
+        u2max = u2 * s2max  # Omega = k**2 chi_h chi_hbar / 4 ? (end of pag 490)
         gamma = t2 / t1
         a = numpy.sin(2 * teta) * t1 * 0.5
         kin = 0.25 * (t1 - t2) * chizero / a
         kinx = numpy.real(kin)
         kiny = numpy.imag(kin)
-        com = numpy.sin(alfa) * (1 + gam1 * gam2 * (1 + poisson_ratio))
+        # com = numpy.sin(alfa) * (1 + gam1 * gam2 * (1 + poisson_ratio))
         kp3 = 0.5 * k * (gamma * a)**2
         mu1 = (numpy.cos(alfa) * 2 * fam1 * gam1 + numpy.sin(alfa) * (fam1**2 + poisson_ratio * gam1**2)) / (numpy.sin(2*teta)* numpy.cos(teta))
         mu2 = (numpy.cos(alfa) * 2 * fam2 * gam2 + numpy.sin(alfa) * (fam2**2 + poisson_ratio * gam2**2)) / (numpy.sin(2*teta)* numpy.cos(teta))
         a1 = (0.5 * thickness / numpy.cos(teta)) * (numpy.cos(alfa) * numpy.sin(teta1) + poisson_ratio*numpy.sin(alfa) * numpy.cos(teta1))
         a2 = (0.5 * thickness / numpy.cos(teta)) * (numpy.cos(alfa) * numpy.sin(teta2) + poisson_ratio*numpy.sin(alfa) * numpy.cos(teta2))
         acrist = -h * numpy.sin(alfa) * (1 + gam1 * gam2 * (1 + poisson_ratio)) / R
-        acmax = acrist * s2max
+        acmax = acrist * s2max   # A in Eq 17
         g = gamma * acrist * R / kp2
-        kap = u2max / acmax   # TODO acmax is zero when alfa is zero!!!!!!!!!!!!!!!!!!
+        kap = u2max / acmax   # beta = Omega / A TODO acmax is zero when alfa is zero!!!!!!!!!!!!!!!!!!
         pe = p * R / (gamma**2 * (R - p * mu2) - g * p)
-
-        # qe[q_] := q*rayon/(rayon - q*(mu1 + g));
-        qe = lambda q:  q * R / (R - q * (mu1 + g))
-
-        # be[q_] := 1/qe[q] + 1/pe;
-        be = lambda q: 1 / qe(q) + 1 / pe
-
-        # le[q_] := (pe + qe[q])/(1 + g*(pe*qe[q]));
-        le = lambda q: (pe + qe(q)) / (1 + g * (pe * qe(q)))
-
-        # invle[q_] := 1/q - mu1/rayon;
-        invle = lambda q: 1 / q - mu1 / R
 
         # q-scan
         if True:
-            qq = numpy.linspace(100, 5000, 100)
+            print("Calculating q-scan...")
+            qq = numpy.linspace(100, 5000, 1000)
             yy = numpy.zeros_like(qq)
             for j in range(qq.size):
                 yy[j] = numpy.abs(sgplus(0, qq[j]) ** 2 * att / (lambda1 * qq[j]))
@@ -253,7 +253,8 @@ if __name__ == "__main__":
             qposition = 1680.96
 
         # x-scan
-        if 1:
+        if True:
+            print("Calculating x-scan...")
             xx = numpy.linspace(-0.0025, .0025, 200)
             yy = numpy.zeros_like(xx)
             for j in range(xx.size):
