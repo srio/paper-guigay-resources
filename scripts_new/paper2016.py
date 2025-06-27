@@ -18,8 +18,8 @@ def sgplus(x, q):
     v = numpy.linspace(0, a, 1000)
     y = numpy.zeros_like(v, dtype=complex)
     for i in range(v.size):
-        y[i] = mpmath.hyp1f1(I * kap, 1, I * acmax * (1 - (v[i] / a)**2)) * \
-            Exp(I * k * 0.5 * v[i]**2 * invle(q)) * Cos(k * v[i] * (x / q - I * kiny))
+        y[i] = mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (v[i] / a)**2)) * \
+            numpy.exp(1j * k * 0.5 * v[i]**2 * invle(q)) * numpy.cos(k * v[i] * (x / q - 1j * kiny))
     return 2 * numpy.trapz(y, x=v)
 
 # curved symmetric Laue, source at finite p
@@ -96,9 +96,9 @@ def run_symmetric(plot_inset=1):
     print("Zsym, Zasym", Zsym, Zasym)
     print("qzero, dynamical focal length [**q0 in mm]", qzero)
 
-    rayon = 2000.0
-    print("rayon", rayon)
-    raygam = rayon * numpy.cos(teta)
+    R = 2000.0
+    print("R", R)
+    raygam = R * numpy.cos(teta)
     print("raygam", raygam)
 
     #
@@ -118,7 +118,7 @@ def run_symmetric(plot_inset=1):
         q_lensequation = 1.0 / (2 / raygam - 1 / p)
     plot(qq, yy,
          [q_lensequation, q_lensequation], [0, yy.max()], legend=['Dynamical theory', 'Lens equation'],
-         xtitle='q [mm]', ytitle="Intensity on axis", title="R=%g mm p=%g mm" % (rayon, p), show=0)
+         xtitle='q [mm]', ytitle="Intensity on axis", title="R=%g mm p=%g mm" % (R, p), show=0)
 
     if plot_inset: # lateral scan (I vs chi)
         qdyn, _, imax  = get_max(qq, yy)
@@ -138,7 +138,7 @@ def run_symmetric(plot_inset=1):
 
         plot(xi, yy1, xi, yy2, legend=['q=%.1f mm' % qq[imax], 'q=%0.1f mm' % qposition],
              xtitle='xi [mm]', ytitle="Intensity",
-             title="xi scan R=%g mm, p=%.1f, ReflInt = %g" % (rayon, p, yy1.sum() * (xi[1] - xi[0])),
+             title="xi scan R=%g mm, p=%.1f, ReflInt = %g" % (R, p, yy1.sum() * (xi[1] - xi[0])),
              show=0)
     plot_show()
 
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     #
     # alpha=0
     #
-    if False:
+    if 0:
         run_symmetric(plot_inset=1)
 
     #
@@ -173,104 +173,93 @@ if __name__ == "__main__":
     #
     # inputs (in mm) ===========================================================
     #
+    if 1:
+        teta = 1.4161222418 * numpy.pi / 180
+        lambda1 = 0.01549817566e-6
+        k = 2 * numpy.pi / lambda1
+        h = 2 * k * numpy.sin(teta)
+        chizero = -0.150710e-6 + 1j * 0.290718e-10
+        chih = numpy.conjugate(-5.69862 + 1j * 5.69574) * 1e-8
+        chimh = -1j * chih;
+        chih2 = chih * chimh
+        u2 = 0.25 * chih2 * k**2
+        thickness = 1
+        p = 0
+        R = 2000
+        raygam = R * numpy.cos(teta)
+        kp = k * numpy.sin(2 * teta)
+        kp2 = k * numpy.sin(2 * teta)**2
+        poisson_ratio = 0.2201
 
-    Pi = numpy.pi
-    Sin = numpy.sin
-    Cos = numpy.cos
-    Exp = numpy.exp
-    I = 1j
-    Conjugate = numpy.conjugate
-    Im = numpy.imag
-    Re = numpy.real
-    Abs = numpy.abs
+        #
+        # TODO: Not working for alfa_deg=0
+        #
 
-    teta = 1.4161222418 * Pi / 180
-    lambda1 = 0.01549817566e-6
-    k = 2 * Pi / lambda1
-    h = 2 * k * Sin(teta)
-    chizero = -0.150710e-6 + I*0.290718e-10
-    chih = Conjugate(-5.69862 + I*5.69574)*1e-8
-    chimh = -I * chih;
-    chih2 = chih * chimh
-    u2 = 0.25 * chih2 * k**2
-    t = 1
-    p = 0
-    rayon = 2000
-    raygam = rayon*Cos(teta)
-    kp = k * Sin(2 * teta)
-    kp2 = k * Sin(2 * teta)**2
-    rau = 0.2201
-    pha = 0.67
+        alfa_deg = -0.05
+        alfa = alfa_deg * numpy.pi / 180
+        teta1 = alfa + teta
+        teta2 = alfa - teta
+        fam1 = numpy.sin(teta1)
+        fam2 = numpy.sin(teta2)
+        gam1 = numpy.cos(teta1)
+        gam2 = numpy.cos(teta2)
+        t1 = thickness / gam1
+        t2 = thickness / gam2
+        qpoly = p * R * gam2 / (2 * p + R * gam1)
+        att = numpy.exp(-k * 0.5 * (t1 + t2) * numpy.imag(chizero))
+        s2max = 0.25 * t1 * t2
+        u2max = u2 * s2max
+        gamma = t2 / t1
+        a = numpy.sin(2 * teta) * t1 * 0.5
+        kin = 0.25 * (t1 - t2) * chizero / a
+        kinx = numpy.real(kin)
+        kiny = numpy.imag(kin)
+        com = numpy.sin(alfa) * (1 + gam1 * gam2 * (1 + poisson_ratio))
+        kp3 = 0.5 * k * (gamma * a)**2
+        mu1 = (numpy.cos(alfa) * 2 * fam1 * gam1 + numpy.sin(alfa) * (fam1**2 + poisson_ratio * gam1**2)) / (numpy.sin(2*teta)* numpy.cos(teta))
+        mu2 = (numpy.cos(alfa) * 2 * fam2 * gam2 + numpy.sin(alfa) * (fam2**2 + poisson_ratio * gam2**2)) / (numpy.sin(2*teta)* numpy.cos(teta))
+        a1 = (0.5 * thickness / numpy.cos(teta)) * (numpy.cos(alfa) * numpy.sin(teta1) + poisson_ratio*numpy.sin(alfa) * numpy.cos(teta1))
+        a2 = (0.5 * thickness / numpy.cos(teta)) * (numpy.cos(alfa) * numpy.sin(teta2) + poisson_ratio*numpy.sin(alfa) * numpy.cos(teta2))
+        acrist = -h * numpy.sin(alfa) * (1 + gam1 * gam2 * (1 + poisson_ratio)) / R
+        acmax = acrist * s2max
+        g = gamma * acrist * R / kp2
+        kap = u2max / acmax   # TODO acmax is zero when alfa is zero!!!!!!!!!!!!!!!!!!
+        pe = p * R / (gamma**2 * (R - p * mu2) - g * p)
 
-    #
-    # TODO: Not working for alfa_deg=0
-    #
+        # qe[q_] := q*rayon/(rayon - q*(mu1 + g));
+        qe = lambda q:  q * R / (R - q * (mu1 + g))
 
-    alfa_deg = -0.0 #  -0.05
-    alfa = alfa_deg * Pi / 180
-    teta1 = alfa + teta
-    teta2 = alfa - teta
-    fam1 = Sin(teta1)
-    fam2 = Sin(teta2)
-    gam1 = Cos(teta1)
-    gam2 = Cos(teta2)
-    t1 = t / gam1
-    t2 = t / gam2
-    qpoly = p * rayon * gam2 / (2 * p + rayon * gam1)
-    att = Exp(-k * 0.5 * (t1 + t2) * Im(chizero))
-    s2max = 0.25 * t1 * t2
-    u2max = u2 * s2max
-    gama = t2 / t1
-    a = Sin(2 * teta) * t1 * 0.5
-    kin = 0.25 * (t1 - t2) * chizero / a
-    kinx = Re(kin)
-    kiny = Im(kin)
-    com = Sin(alfa) * (1 + gam1 * gam2 * (1 + rau))
-    kp3 = 0.5 * k * (gama*a)**2
-    mu1 = (Cos(alfa) * 2 * fam1 * gam1 + Sin(alfa) * (fam1**2 + rau * gam1**2)) / (Sin(2*teta)* Cos(teta))
-    mu2 = (Cos(alfa) * 2 * fam2 * gam2 + Sin(alfa) * (fam2**2 + rau * gam2**2)) / (Sin(2*teta)* Cos(teta))
-    a1 = (0.5 * t / Cos(teta)) * (Cos(alfa) * Sin(teta1) + rau*Sin(alfa) * Cos(teta1))
-    a2 = (0.5 * t / Cos(teta)) * (Cos(alfa) * Sin(teta2) + rau*Sin(alfa) * Cos(teta2))
-    acrist = -h * Sin(alfa) * (1 + gam1 * gam2 * (1 + rau)) / rayon
-    acmax = acrist * s2max
-    g = gama * acrist * rayon / kp2
-    kap = u2max / acmax
-    pe = p * rayon / (gama**2 * (rayon - p * mu2) - g * p)
+        # be[q_] := 1/qe[q] + 1/pe;
+        be = lambda q: 1 / qe(q) + 1 / pe
 
-    # qe[q_] := q*rayon/(rayon - q*(mu1 + g));
-    qe = lambda q:  q * rayon / (rayon - q * (mu1 + g))
+        # le[q_] := (pe + qe[q])/(1 + g*(pe*qe[q]));
+        le = lambda q: (pe + qe(q)) / (1 + g * (pe * qe(q)))
 
-    # be[q_] := 1/qe[q] + 1/pe;
-    be = lambda q: 1 / qe(q) + 1 / pe
+        # invle[q_] := 1/q - mu1/rayon;
+        invle = lambda q: 1 / q - mu1 / R
 
-    # le[q_] := (pe + qe[q])/(1 + g*(pe*qe[q]));
-    le = lambda q: (pe + qe(q)) / (1 + g * (pe * qe(q)))
+        # q-scan
+        if True:
+            qq = numpy.linspace(100, 5000, 100)
+            yy = numpy.zeros_like(qq)
+            for j in range(qq.size):
+                yy[j] = numpy.abs(sgplus(0, qq[j]) ** 2 * att / (lambda1 * qq[j]))
+            plot(qq, yy,
+                 xtitle='q [mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
+                 show=0)
+            qdyn, _, imax = get_max(qq, yy)
+            qposition = qdyn
+        else:
+            qposition = 1680.96
 
-    # invle[q_] := 1/q - mu1/rayon;
-    invle = lambda q: 1 / q - mu1 / rayon
-
-    # q-scan
-    if True:
-        qq = numpy.linspace(100, 5000, 500)
-        yy = numpy.zeros_like(qq)
-        for j in range(qq.size):
-            yy[j] = Abs(sgplus(0, qq[j]) ** 2 * att / (lambda1 * qq[j]))
-        plot(qq, yy,
-             xtitle='q [mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
-             show=0)
-        qdyn, _, imax = get_max(qq, yy)
-        qposition = qdyn
-    else:
-        qposition = 1680.96
-
-    # x-scan
-    if False:
-        xx = numpy.linspace(-0.0025, .0025, 200)
-        yy = numpy.zeros_like(xx)
-        for j in range(xx.size):
-            yy[j] = Abs(sgplus(xx[j], qposition) ** 2 * att / (lambda1 * qposition))
-        plot(xx, yy,
-             xtitle='xi [mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
-             show=0)
+        # x-scan
+        if 1:
+            xx = numpy.linspace(-0.0025, .0025, 200)
+            yy = numpy.zeros_like(xx)
+            for j in range(xx.size):
+                yy[j] = numpy.abs(sgplus(xx[j], qposition) ** 2 * att / (lambda1 * qposition))
+            plot(xx, yy,
+                 xtitle='xi [mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
+                 show=0)
 
     plot_show()
