@@ -57,21 +57,75 @@ def integrate_sgplus_notcentered(x, q, k=0.0, a=0.0, mu1=0.0, R=0.0, beta=0.0, a
     return numpy.trapz(yy, x=v)
 
 
+# equation 23
+def sgplus_qzero(x, q, k=0.0, a=0.0, mu1=0.0, R=0.0, beta=0.0, acmax=0.0, omega_imag=0.0,
+                 gamma=0, teta=0, Aeq17=0, xc_over_q=0,
+                 t1=0, t2=0, teta1=0, omega_real=0, chizero=0, # NEWWWWWWWWWWWWWWW
+                 ):
+
+    # y is defined just before eq 23
+    y = Aeq17 *  gamma * (a**2 - x**2) / (numpy.sin(2 * teta))**2
+
+    yy = mpmath.hyp1f1(1j * beta, 1, 1j * y) * \
+        numpy.exp( (1j * k * chizero.real - k * chizero.imag) * 0.25 * (t1 + t2) ) * \
+        numpy.exp( -1j * x**2 * k * mu1 / 2 / R + \
+                   1j * x * k * (omega_real - t1 * numpy.sin(teta1) / 2 / R) - \
+                   k * x * omega_imag)
+    return yy
+
+
 def get_max(xx, yy, verbose=1):
     i = numpy.argmax(yy)
     if verbose: print("Maximum found at x=%g, y=%g" % (xx[i],yy[i]))
     return xx[i], yy[i], i
 
-def run_asymmetric(plot_qscan=1, plot_xscan=1):
+def run_asymmetric(fig=2, use_automatic_chi=1, plot_qscan=1, plot_xscan=1, plot_qzero=1):
     # teta = 1.4161222418 * numpy.pi / 180
     # lambda1 = 0.01549817566e-6
     # chizero = -0.150710e-6 + 1j * 0.290718e-10
     # chih = numpy.conjugate(-5.69862 + 1j * 5.69574) * 1e-8
 
-    photon_energy_in_keV = 80.0
-    teta, chizero, chih = get_crystal_data("Si", hkl=[1, 1, 1], photon_energy_in_keV=photon_energy_in_keV,
-                                           verbose=False)
-    lambda1 = codata.h * codata.c / codata.e / (photon_energy_in_keV * 1e3) * 1e3  # in mm
+
+    if fig == 2:
+        photon_energy_in_keV = 80.0
+        thickness = 1.0 # mm
+        p = 0.0 # mm
+        qmax = 5000
+        qposition = 2466.0  # extra q position
+        # qposition = 1679
+    elif fig in [4, 5, 6]:
+        photon_energy_in_keV = 20.0
+        thickness = 0.250 # mm
+        p = 29000.0 # mm
+        qmax = 10000
+        if use_automatic_chi:
+            qposition = 3556.5 # extra q position
+        else:
+            qposition = 550
+        # qposition = 3579 # 0.00001
+    else:
+        raise NotImplementedError()
+
+
+
+    if use_automatic_chi:
+        teta, chizero, chih = get_crystal_data("Si", hkl=[1,1,1], photon_energy_in_keV=photon_energy_in_keV, verbose=False)
+        lambda1 = codata.h * codata.c / codata.e / (photon_energy_in_keV * 1e3) * 1e3 # in mm
+        chihm = -1j * chih
+    else:
+        if fig == 2:
+            teta = numpy.radians(1.4161222418)
+            lambda1 = 0.01549817556e-6
+            chizero = -0.150710e-6 + 1j * 0.290718e-10
+            chih = (-5.69862 + 1j * 5.69574) * 1e-8
+            chihm = -1j * chih
+        else:# # 20 keV
+            teta = numpy.radians(5.67310)
+            lambda1 = 0.619927e-7
+            chizero = -0.242370e-5 + 1j * 0.918640e-8
+            chih = (-0.922187 + 1j * 0.9131110) * 1e-6
+            chihm = -1j * chih
+
     print("photon_energy_in_keV:", photon_energy_in_keV)
     print("CrystalSi 111")
     print(">>>>>>>>>> teta_deg:", teta * 180 / numpy.pi)
@@ -144,7 +198,7 @@ def run_asymmetric(plot_qscan=1, plot_xscan=1):
     # q-scan
     if plot_qscan:
         print("Calculating q-scan...")
-        qq = numpy.linspace(100, 5000, 100)
+        qq = numpy.linspace(100, qmax, 100)
         yy = numpy.zeros_like(qq)
         for j in range(qq.size):
             amplitude = integrate_sgplus(0, qq[j],
@@ -159,7 +213,7 @@ def run_asymmetric(plot_qscan=1, plot_xscan=1):
         qdyn, _, imax = get_max(qq, yy)
         qposition = qdyn
     else:
-        qposition = 1680.96
+        qposition = 0.0
 
     # x-scan centered
     if plot_xscan:
@@ -174,23 +228,56 @@ def run_asymmetric(plot_qscan=1, plot_xscan=1):
                                    gamma=gamma, teta=teta, Aeq17=Aeq17,  # NEWWWWWWWWWW
                                    ) / numpy.sqrt(numpy.abs(lambda1 * qposition))
             yy[j] = att * numpy.abs(amplitude)**2
-        plot(xx, yy,
+        plot(xx, yy, xx + xc_over_q * qposition, yy,
              xtitle='x - xc[mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
              show=0)
 
-        print("Calculating x-scan (not centered)...")
-        # xx = numpy.linspace(-0.0025, .0025, 200)
-        xx = numpy.linspace(-a, a, 1000)
-        yy = numpy.zeros_like(xx)
-        for j in range(xx.size):
-            amplitude = integrate_sgplus_notcentered(xx[j], qposition,
-                                   k=k, a=a, mu1=mu1, R=R,
-                                   beta=beta, acmax=acmax, omega_imag=omega_imag,
-                                   gamma=gamma, teta=teta, Aeq17=Aeq17, xc_over_q=xc_over_q # NEWWWWWWWWWW
-                                   ) / numpy.sqrt(numpy.abs(lambda1 * qposition))
-            yy[j] = att * numpy.abs(amplitude)**2
-        plot(xx, yy,
-             xtitle='x [mm] (NOT CENTERED)', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
+        if 0: # test using long equation 24
+            print("Calculating x-scan (not centered, longer calculation)...")
+            # xx = numpy.linspace(-0.0025, .0025, 200)
+            xx1 = numpy.linspace(-0.015, -0.005, 200)
+            yy1 = numpy.zeros_like(xx1)
+            for j in range(xx1.size):
+                amplitude = integrate_sgplus_notcentered(xx1[j], qposition,
+                                       k=k, a=a, mu1=mu1, R=R,
+                                       beta=beta, acmax=acmax, omega_imag=omega_imag,
+                                       gamma=gamma, teta=teta, Aeq17=Aeq17, xc_over_q=xc_over_q # NEWWWWWWWWWW
+                                       ) / numpy.sqrt(numpy.abs(lambda1 * qposition))
+                yy1[j] = att * numpy.abs(amplitude)**2
+            plot(xx1, yy1, xx, yy, xx + xc_over_q * qposition, yy,
+                 xtitle='x [mm] (NOT CENTERED)', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
+                 show=0)
+
+    if plot_qzero:
+        print("Calculating x-scan for q=0...")
+        xx1 = numpy.linspace(-a, a, 200)
+        yy1 = numpy.zeros_like(xx1)
+        for j in range(xx1.size):
+            # amplitude = sgplus_qzero(xx1[j], qposition,
+            #                        k=k, a=a, mu1=mu1, R=R,
+            #                        beta=beta, acmax=acmax, omega_imag=omega_imag,
+            #                        gamma=gamma, teta=teta, Aeq17=Aeq17, xc_over_q=xc_over_q, # NEWWWWWWWWWW
+            #                        t1=t1, t2=t2, teta1=teta1, omega_real=omega_real, chizero=chizero)
+
+            # equation 23
+            x = xx1[j]
+            y = Aeq17 * gamma * (a ** 2 - x ** 2) / (numpy.sin(2 * teta)) ** 2
+            # y = acmax * (1 - (x / a) ** 2)
+            amplitude = mpmath.hyp1f1(1j * beta, 1, 1j * y)
+            # amplitude *= numpy.exp((- k * chizero.imag) * 0.25 * (t1 + t2))
+            # amplitude *= numpy.exp(- k * x * omega_imag)
+            print(x, amplitude, numpy.abs(amplitude)**2)
+
+
+            #* \
+                 # numpy.exp((1j * k * chizero.real - k * chizero.imag) * 0.25 * (t1 + t2)) * \
+                 # numpy.exp(-1j * x ** 2 * k * mu1 / 2 / R + \
+                 #           1j * x * k * (omega_real - t1 * numpy.sin(teta1) / 2 / R) - \
+                 #           k * x * omega_imag)
+            yy1[j] = numpy.abs(amplitude)**2
+
+        plot(xx1, yy1,
+             xtitle='x [mm]', ytitle="Intensity on axis at q=0", title="alfa=%g deg" % (alfa_deg),
              show=0)
 
 if __name__ == "__main__":
@@ -203,6 +290,6 @@ if __name__ == "__main__":
     #
     # asymmetric Fig. 2
     #
-    run_asymmetric(plot_qscan=0, plot_xscan=1)
+    run_asymmetric(fig=2, use_automatic_chi=0, plot_qscan=1, plot_xscan=0, plot_qzero=0)
 
     plot_show()

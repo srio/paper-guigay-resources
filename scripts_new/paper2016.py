@@ -8,15 +8,15 @@ from scipy.special import jv as BesselJ
 import scipy.constants as codata
 from crystal_data import get_crystal_data
 from srxraylib.plot.gol import plot, set_qt, plot_show
-
+import time
 
 # sgplus[x_, q_] :=
 #   2*NIntegrate[
 #     Hypergeometric1F1[I*kap, 1, I*acmax*(1 - (v/a)^2)]*
 #      Exp[0.5*I*k*v^2*invle[q]]*Cos[k*v*(x/q - I*kiny)], {v, 0, a}];
 
-def sgplus(x, q):
-    v = numpy.linspace(0, a, 1000)
+def sgplus(x, q, npoints=1000):
+    v = numpy.linspace(0, a, npoints)
     y = numpy.zeros_like(v, dtype=complex)
 
     invle = 1 / q - mu1 / R
@@ -26,121 +26,11 @@ def sgplus(x, q):
             numpy.exp(1j * k * 0.5 * v[i]**2 * invle) * numpy.cos(k * v[i] * (x / q - 1j * kiny))
     return 2 * numpy.trapz(y, x=v)
 
-# curved symmetric Laue, source at finite p
-# Eq. 13 in doi:10.1107/S0108767312044601  (2013) or
-# Eq. 23 in https://doi.org/10.1107/S1600577521012480 (2022)
-def integral_psisym(x, q, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, on_x_at_maximum=0):
-    v = numpy.linspace(-a, a, 2000)
-    y = numpy.zeros_like(v, dtype=complex)
-    pe = p * RcosTheta / (RcosTheta + p)
-    qe = q * RcosTheta / (RcosTheta - q)
-    lesym = pe + qe
-    # pe + qe # RcosTheta * q / (RcosTheta - q)
-    # fact_eta = (2 * x * qe / q / lesym +  a / raygam) # diverges at q=0
-    fact_eta = (2 * x * (RcosTheta / (RcosTheta - q)) / lesym + a / RcosTheta)
-    if on_x_at_maximum:
-        x = 0.0
-        fact_eta = 0.0
-
-    for i in range(v.size):
-        arg_bessel = Z * numpy.sqrt((a + v[i]) * (a - v[i]))
-        y[i] = BesselJ(0, arg_bessel) * numpy.exp(1j * k * 0.5 * (v[i] ** 2 / lesym - v[i] * fact_eta))
-
-    return numpy.trapz(y, x=v)
-
 
 def get_max(xx, yy, verbose=1):
     i = numpy.argmax(yy)
     if verbose: print("Maximum found at x=%g, y=%g" % (xx[i],yy[i]))
     return xx[i], yy[i], i
-
-def run_symmetric(plot_inset=1):
-    #
-    # inputs (in mm) ===========================================================
-    #
-    photon_energy_in_keV = 80.0
-    thickness = 1.0 # mm
-
-
-    p = 0.0 # mm
-
-    #
-    # end inputs ===========================================================
-    #
-    teta, chizero, chih = get_crystal_data("Si", hkl=[1,1,1], photon_energy_in_keV=photon_energy_in_keV, verbose=False)
-    lambda1 = codata.h * codata.c / codata.e / (photon_energy_in_keV * 1e3) * 1e3 # in mm
-    print("photon_energy_in_keV:", photon_energy_in_keV)
-    print("CrystalSi 111")
-    print(">>>>>>>>>> teta_deg:", teta * 180 / numpy.pi)
-    print(">>>>>>>>>> chizero:", chizero)
-    print(">>>>>>>>>> chih:", chih)
-    print(">>>>>>>>>> lambda1:", lambda1)
-
-
-
-    k = 2 * numpy.pi / lambda1
-    h = 2 * k * numpy.sin(teta)
-    chihm = -1j * chih
-    chih2 = chih * chihm
-
-    print(">>>>>>>>>> chih*chihbar:")
-
-    Zsym = k * numpy.sqrt(chih2) / numpy.sin(2 * teta)
-    attsym = 1.0 # numpy.exp(-k * numpy.imag(chizero) * thickness / numpy.cos(teta))
-    asym = thickness * numpy.sin(teta)
-    Zasym = Zsym * asym
-    qzero = asym * numpy.sin(2 * teta) / numpy.real(numpy.sqrt(chih2))
-
-    print("attsym", attsym)
-    print("asym, halfwith of reflected beam [**a in mm**]", asym)
-    print("Zsym, Zasym", Zsym, Zasym)
-    print("qzero, dynamical focal length [**q0 in mm]", qzero)
-
-    R = 2000.0
-    print("R", R)
-    raygam = R * numpy.cos(teta)
-    print("raygam", raygam)
-
-    #
-    # this part uses the source at p=finite, R finite, and calculates I(xi, qdyn) and I(focus,q) to obtain qdyn
-    #
-
-    qq = numpy.linspace(100, 5000, 1000)
-    yy = numpy.zeros_like(qq)
-
-    for j in range(qq.size):
-        yy[j] = attsym / (lambda1 * (p + qq[j])) * numpy.abs(integral_psisym(0, qq[j],
-                                                    k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p, on_x_at_maximum=1)) ** 2
-
-    if p == 0.0:
-        q_lensequation = 0
-    else:
-        q_lensequation = 1.0 / (2 / raygam - 1 / p)
-    plot(qq, yy,
-         [q_lensequation, q_lensequation], [0, yy.max()], legend=['Dynamical theory', 'Lens equation'],
-         xtitle='q [mm]', ytitle="Intensity on axis", title="R=%g mm p=%g mm" % (R, p), show=0)
-
-    if plot_inset: # lateral scan (I vs chi)
-        qdyn, _, imax  = get_max(qq, yy)
-        xi = numpy.linspace(-asym, asym, 1000)
-        yy1 = numpy.zeros_like(xi)
-        for j in range(xi.size):
-            yy1[j] = attsym / (lambda1 * (p + qq[imax])) * \
-                     numpy.abs(integral_psisym(xi[j], qq[imax], k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p)) ** 2
-
-        yy2_ampl = numpy.zeros_like(xi, dtype=complex)
-        yy2 = numpy.zeros_like(xi)
-        qposition = 2466.0
-        for j in range(xi.size):
-            yy2_ampl[j] = numpy.sqrt(attsym / (lambda1 * (p + qposition))) * \
-                          integral_psisym(xi[j], qposition, k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p)
-            yy2[j] =  numpy.abs(yy2_ampl[j]) ** 2
-
-        plot(xi, yy1, xi, yy2, legend=['q=%.1f mm' % qq[imax], 'q=%0.1f mm' % qposition],
-             xtitle='xi [mm]', ytitle="Intensity",
-             title="xi scan R=%g mm, p=%.1f, ReflInt = %g" % (R, p, yy1.sum() * (xi[1] - xi[0])),
-             show=0)
-    plot_show()
 
 if __name__ == "__main__":
     #
@@ -159,9 +49,8 @@ if __name__ == "__main__":
 
 
     #
-    # alpha=0
+    # alpha=0 : see file paper2016symmetric
     #
-    if False: run_symmetric(plot_inset=1)
 
     #
     # asymmetric Fig. 2
@@ -238,22 +127,26 @@ if __name__ == "__main__":
         pe = p * R / (gamma**2 * (R - p * mu2) - g * p)
 
         # q-scan
-        if True:
+        if False:
             print("Calculating q-scan...")
+            t0 = time.time()
             qq = numpy.linspace(100, 5000, 1000)
             yy = numpy.zeros_like(qq)
             for j in range(qq.size):
-                yy[j] = numpy.abs(sgplus(0, qq[j]) ** 2 * att / (lambda1 * qq[j]))
+                yy[j] = numpy.abs(sgplus(0, qq[j], npoints=500) ** 2 * att / (lambda1 * qq[j]))
+            print("Time in calculating q-scan %f s" % (time.time() - t0))
             plot(qq, yy,
                  xtitle='q [mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
                  show=0)
             qdyn, _, imax = get_max(qq, yy)
             qposition = qdyn
-        else:
-            qposition = 1680.96
 
-        # x-scan
-        if True:
+        else:
+            qposition = 2459.26
+
+
+        # x-scan at finite q
+        if False:
             print("Calculating x-scan...")
             xx = numpy.linspace(-0.0025, .0025, 200)
             yy = numpy.zeros_like(xx)
@@ -262,5 +155,36 @@ if __name__ == "__main__":
             plot(xx, yy,
                  xtitle='xi [mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
                  show=0)
+
+
+
+        # x-scan at q=0
+        if True:
+            print("Calculating x-scan... a=", a)
+            # xx = numpy.linspace(-0.0025, .0025, 200)
+            xx = numpy.linspace(-a * 0.99, a * 0.99, 200)
+            yy = numpy.zeros_like(xx)
+
+            omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
+            omega_real = numpy.real(omega)
+            omega_imag = numpy.imag(omega)
+            xc_over_q = omega_real - t1 * numpy.sin(alfa + teta) / (2 * R)
+
+            for j in range(xx.size):
+                x = xx[j]
+                # equation 23
+                amplitude = numpy.exp((1j * k * chizero.real - k * chizero.imag) * 0.25 * (t1 + t2)) * \
+                        mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (x / a) ** 2)) * \
+                        numpy.exp(-0.5 * 1j * x**2 * (1 / qposition - mu1 / R) - \
+                                  1j * qposition * x * (x - xc_over_q * qposition) / qposition) * \
+                        numpy.exp(- x * k * omega_imag)
+
+                yy[j] = numpy.abs(amplitude)**2
+
+            plot(xx, yy,
+                 xtitle='xi [mm]', ytitle="Intensity at q=0", title="alfa=%g deg" % (alfa_deg),
+                 show=0)
+
+
 
     plot_show()

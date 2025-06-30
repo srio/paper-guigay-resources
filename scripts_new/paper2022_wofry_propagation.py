@@ -2,21 +2,18 @@ import numpy
 from scipy.special import jv as BesselJ
 import scipy.constants as codata
 
-
-
-
 # curved symmetric Laue, source at finite p
-# Eq. 13 in doi:10.1107/S0108767312044601  or
-# Eq. 23 in https://doi.org/10.1107/S1600577521012480
-def integral_psisym(x, q, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, on_x_at_maximum=0):
-    v = numpy.linspace(0, a, 1000)
+# Eq. 13 in doi:10.1107/S0108767312044601  (2013) or
+# Eq. 23 in https://doi.org/10.1107/S1600577521012480 (2022)
+def integral_psisym(x, q, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, on_x_at_maximum=0):
+    v = numpy.linspace(-a, a, 2000)
     y = numpy.zeros_like(v, dtype=complex)
     pe = p * RcosTheta / (RcosTheta + p)
     qe = q * RcosTheta / (RcosTheta - q)
     lesym = pe + qe
     # pe + qe # RcosTheta * q / (RcosTheta - q)
     # fact_eta = (2 * x * qe / q / lesym +  a / raygam) # diverges at q=0
-    fact_eta = (2 * x * (RcosTheta / (RcosTheta - q)) / lesym + a / raygam)
+    fact_eta = (2 * x * (RcosTheta / (RcosTheta - q)) / lesym + a / RcosTheta)
     if on_x_at_maximum:
         x = 0.0
         fact_eta = 0.0
@@ -25,7 +22,7 @@ def integral_psisym(x, q, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, on_x_at_maximum=0)
         arg_bessel = Z * numpy.sqrt((a + v[i]) * (a - v[i]))
         y[i] = BesselJ(0, arg_bessel) * numpy.exp(1j * k * 0.5 * (v[i] ** 2 / lesym - v[i] * fact_eta))
 
-    return 2 * numpy.trapz(y, x=v)
+    return numpy.trapz(y, x=v)
 
 
 def get_max(xx, yy, verbose=1):
@@ -40,13 +37,13 @@ if __name__ == "__main__":
 
 
 
-    photon_energy_in_keV = 17.0
-    # photon_energy_in_keV = 8.3
+    # photon_energy_in_keV = 17.0
+    photon_energy_in_keV = 8.3
 
     filename = "crystal_amplitude_%d.h5" % (1e3 * photon_energy_in_keV)
 
 
-    do_calculate = 1
+    do_calculate = 0
 
     if do_calculate:
         set_qt()
@@ -110,7 +107,7 @@ if __name__ == "__main__":
 
             for j in range(qq.size):
                 yy[j] = attsym / (lambda1 * (p + qq[j])) * numpy.abs(integral_psisym(0, qq[j],
-                                                            Z=Zsym, a=asym, RcosTheta=raygam, p=p, on_x_at_maximum=1)) ** 2
+                                                            k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p, on_x_at_maximum=1)) ** 2
 
             q_lensequation = 1.0 / (2 / raygam - 1 / p)
             plot(qq, yy,
@@ -124,13 +121,13 @@ if __name__ == "__main__":
             for j in range(xi.size):
                 yy1[j] = attsym / (lambda1 * (p + qdyn)) * \
                          numpy.abs(integral_psisym(xi[j], qdyn,
-                                                   Z=Zsym, a=asym, RcosTheta=raygam, p=p)) ** 2
+                                                   k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p)) ** 2
 
             yy2_ampl = numpy.zeros_like(xi, dtype=complex)
             yy2 = numpy.zeros_like(xi)
             for j in range(xi.size):
                 yy2_ampl[j] = numpy.sqrt(attsym / (lambda1 * (p + 0.0))) * \
-                              integral_psisym(xi[j], 0.0, Z=Zsym, a=asym, RcosTheta=raygam, p=p)
+                              integral_psisym(xi[j], 0.0, k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p)
                 yy2[j] =  numpy.abs(yy2_ampl[j]) ** 2
 
             #

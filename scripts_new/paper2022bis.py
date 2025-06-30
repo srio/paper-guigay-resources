@@ -182,7 +182,7 @@ if __name__ == "__main__":
                     qposition = 1330.
                 else:
                     qposition = 1372.
-
+                qposition = 0
                 for j in range(xi.size):
                     yy2_ampl[j] = numpy.sqrt(attsym / (lambda1 * (p + qposition))) * \
                                   integral_psisym(xi[j], qposition, k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p)
