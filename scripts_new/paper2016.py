@@ -10,21 +10,28 @@ from crystal_data import get_crystal_data
 from srxraylib.plot.gol import plot, set_qt, plot_show
 import time
 
+# equation 24?
+# file Wilkins_p0.nb
 # sgplus[x_, q_] :=
 #   2*NIntegrate[
 #     Hypergeometric1F1[I*kap, 1, I*acmax*(1 - (v/a)^2)]*
 #      Exp[0.5*I*k*v^2*invle[q]]*Cos[k*v*(x/q - I*kiny)], {v, 0, a}];
-
-def sgplus(x, q, npoints=1000):
+def sgplus_fig2(x, q, npoints=1000):
     v = numpy.linspace(0, a, npoints)
     y = numpy.zeros_like(v, dtype=complex)
-
     invle = 1 / q - mu1 / R
-
     for i in range(v.size):
         y[i] = mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (v[i] / a)**2)) * \
-            numpy.exp(1j * k * 0.5 * v[i]**2 * invle) * numpy.cos(k * v[i] * (x / q - 1j * kiny))
+            numpy.exp(1j * k * 0.5 * v[i]**2 * invle) * \
+            numpy.cos(k * v[i] * (x / q - 1j * kiny))
     return 2 * numpy.trapz(y, x=v)
+
+# sgmoins[x_, q_] :=
+#   2*NIntegrate[
+#     Hypergeometric1F1[I*kap, 1, I*acmax*(1 - (v/a)^2)]*
+#      Exp[0.5*I*k*v^2*invle[q]]*Cos[k*v*(x/q - I*kiny)], {v, 0, a}];
+def sgmoins_fig2(x, q, npoints=1000):
+    return sgplus_fig2(x, q, npoints=npoints)
 
 
 def get_max(xx, yy, verbose=1):
@@ -49,56 +56,101 @@ if __name__ == "__main__":
 
 
     #
-    # alpha=0 : see file paper2016symmetric
+    # common values
     #
+    fig = 2
+    do_qscan = 0
+    do_xscan = 0
+    do_qzero = 1
 
-    #
-    # asymmetric Fig. 2
-    #
-
-    #
-    # inputs (in mm) ===========================================================
-    #
-    if True:
-        # teta = 1.4161222418 * numpy.pi / 180
-        # lambda1 = 0.01549817566e-6
-        # chizero = -0.150710e-6 + 1j * 0.290718e-10
-        # chih = numpy.conjugate(-5.69862 + 1j * 5.69574) * 1e-8
-
+    R = 2000
+    poisson_ratio = 0.2201
+    SG = 1.0
+    use_automatic_chi = 0
+    if fig == 2:
         photon_energy_in_keV = 80.0
-        teta, chizero, chih = get_crystal_data("Si", hkl=[1, 1, 1], photon_energy_in_keV=photon_energy_in_keV,
-                                               verbose=False)
-        lambda1 = codata.h * codata.c / codata.e / (photon_energy_in_keV * 1e3) * 1e3  # in mm
+        thickness = 1.0  # mm
+        p = 0.0  # mm
+        alfa_deg = 0.05
+        qmax = 5000
+        qposition = 2459.26
+        factor = 0.9891
+    elif fig == 3:
+        photon_energy_in_keV = 80.0
+        thickness = 1.0  # mm
+        p = 20000.0  # mm
+        # alfa_deg = 0.25
+        # alfa_deg = 0.75
+        alfa_deg = 1.5
+        qmax = 4000
+        qposition = 912.826
+        factor = 0.9934
+    elif fig in [4, 5, 6]:
+        photon_energy_in_keV = 20.0
+        thickness = 0.250  # mm
+        p = 29000.0  # mm
+        alfa_deg = 2.0
+        qmax = 10000
+        qposition = 0  # extra q position
+        SG = -1.0
+        factor = 0.9891
+    else:
+        raise NotImplementedError()
+
+    #
+    # asymmetric Fig. 2 (p=0)
+    #
+    if fig == 2:
+        if use_automatic_chi:
+            teta, chizero, chih = get_crystal_data("Si", hkl=[1, 1, 1], photon_energy_in_keV=photon_energy_in_keV,
+                                                   verbose=False)
+            lambda1 = codata.h * codata.c / codata.e / (photon_energy_in_keV * 1e3) * 1e3  # in mm
+            chimh = -1j * chih
+            chih2 = chih * chimh
+            """
+            >>>>>>>>>> chizero: (-1.5057156520331863e-07+2.935993357131102e-11j)
+            >>>>>>>>>> chih: (-5.6659637601051554e-08-5.6630277667480283e-08j)
+            >>>>>>>>>> chimh: (-5.6630277667480283e-08+5.6659637601051554e-08j)
+            >>>>>>>>>> chih*chihbar: (6.417302019772712e-15-3.326184386578894e-18j)
+            """
+        else:
+            teta = 1.4161222418 * numpy.pi / 180
+            lambda1 = 0.01549817566e-6
+            chizero = -0.150710e-6 + 1j * 0.290718e-10
+            chih = numpy.conjugate(-5.69862 + 1j * 5.69574) * 1e-8
+            chimh = -1j * chih
+            chih2 = chih * chimh
+
         print("photon_energy_in_keV:", photon_energy_in_keV)
+        print("lambda1 in mm:", lambda1)
+        print("lambda1 in m, A:", lambda1 * 1e-3, lambda1 * 1e-3 * 1e10)
         print("CrystalSi 111")
         print(">>>>>>>>>> teta_deg:", teta * 180 / numpy.pi)
-        print(">>>>>>>>>> chizero:", chizero)
-        print(">>>>>>>>>> chih:", chih)
-        print(">>>>>>>>>> lambda1:", lambda1)
-
+        print(">>>>>>>>>> p:", p)
+        print(">>>>>>>>>> qposition:", qposition)
+        print(">>>>>>>>>> R:", R)
 
         k = 2 * numpy.pi / lambda1
         h = 2 * k * numpy.sin(teta)
 
-        chimh = -1j * chih;
-        chih2 = chih * chimh
+        print(">>>>>>>>>> chizero:", chizero)
+        print(">>>>>>>>>> chih:", chih)
+        print(">>>>>>>>>> chimh:", chimh)
+        print(">>>>>>>>>> chih*chihbar:", chih2)
+
+
         u2 = 0.25 * chih2 * k**2
-        thickness = 1
-        p = 0
-        R = 2000
         raygam = R * numpy.cos(teta)
         kp = k * numpy.sin(2 * teta)
         kp2 = k * numpy.sin(2 * teta)**2
-        poisson_ratio = 0.2201
 
         #
         # TODO: Not working for alfa_deg=0
         #
 
-        alfa_deg = -0.05
         alfa = alfa_deg * numpy.pi / 180
-        teta1 = alfa + teta
-        teta2 = alfa - teta
+        teta1 = alfa + SG * teta
+        teta2 = alfa - SG * teta
         fam1 = numpy.sin(teta1)
         fam2 = numpy.sin(teta2)
         gam1 = numpy.cos(teta1)
@@ -127,13 +179,19 @@ if __name__ == "__main__":
         pe = p * R / (gamma**2 * (R - p * mu2) - g * p)
 
         # q-scan
-        if False:
+        if do_qscan:
             print("Calculating q-scan...")
             t0 = time.time()
-            qq = numpy.linspace(100, 5000, 1000)
+            qq = numpy.linspace(100, qmax, 500)
             yy = numpy.zeros_like(qq)
-            for j in range(qq.size):
-                yy[j] = numpy.abs(sgplus(0, qq[j], npoints=500) ** 2 * att / (lambda1 * qq[j]))
+            if alfa > 0 :
+                for j in range(qq.size):
+                    amplitude = sgplus_fig2(0, qq[j], npoints=500)
+                    yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j]))
+            else:
+                for j in range(qq.size):
+                    amplitude = sgmoins_fig2(0, qq[j], npoints=500)
+                    yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j]))
             print("Time in calculating q-scan %f s" % (time.time() - t0))
             plot(qq, yy,
                  xtitle='q [mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
@@ -141,50 +199,61 @@ if __name__ == "__main__":
             qdyn, _, imax = get_max(qq, yy)
             qposition = qdyn
 
-        else:
-            qposition = 2459.26
-
 
         # x-scan at finite q
-        if False:
+        if do_xscan:
             print("Calculating x-scan...")
             xx = numpy.linspace(-0.0025, .0025, 200)
             yy = numpy.zeros_like(xx)
             for j in range(xx.size):
-                yy[j] = numpy.abs(sgplus(xx[j], qposition) ** 2 * att / (lambda1 * qposition))
+                yy[j] = numpy.abs(sgplus_fig2(xx[j], qposition) ** 2 * att / (lambda1 * qposition))
             plot(xx, yy,
-                 xtitle='xi [mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
+                 xtitle='xi [mm]', ytitle="Intensity", title="alfa=%g deg q=%.1f mm" % (alfa_deg, qposition),
                  show=0)
 
-
-
+        # (equation 23)
         # x-scan at q=0
-        if True:
+        if do_qzero:
+            print(">>>", 1 / (k * mu1 / 2 / R))
             print("Calculating x-scan... a=", a)
-            # xx = numpy.linspace(-0.0025, .0025, 200)
-            xx = numpy.linspace(-a * 0.99, a * 0.99, 200)
-            yy = numpy.zeros_like(xx)
-
             omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
             omega_real = numpy.real(omega)
             omega_imag = numpy.imag(omega)
             xc_over_q = omega_real - t1 * numpy.sin(alfa + teta) / (2 * R)
 
+            # xx = numpy.linspace(-0.0025, .0025, 200)
+
+
+            xx = numpy.linspace(-a * factor, a * factor, 2000)
+            yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
                 x = xx[j]
                 # equation 23
                 amplitude = numpy.exp((1j * k * chizero.real - k * chizero.imag) * 0.25 * (t1 + t2)) * \
                         mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (x / a) ** 2)) * \
-                        numpy.exp(-0.5 * 1j * x**2 * (1 / qposition - mu1 / R) - \
-                                  1j * qposition * x * (x - xc_over_q * qposition) / qposition) * \
+                        numpy.exp(-1j * x**2 * k * mu1 / 2 / R) *\
+                        numpy.exp(1j * x * k * (omega_real - t1 * numpy.sin(teta1) / 2 / R)) * \
                         numpy.exp(- x * k * omega_imag)
 
-                yy[j] = numpy.abs(amplitude)**2
+                yy_amplitude[j] = amplitude
 
-            plot(xx, yy,
-                 xtitle='xi [mm]', ytitle="Intensity at q=0", title="alfa=%g deg" % (alfa_deg),
+            plot(xx / a, numpy.abs(yy_amplitude)**2,
+                 xtitle='xi/a [mm]', ytitle="Intensity at q=0", title="alfa=%g deg" % (alfa_deg),
                  show=0)
 
+
+            #
+            # write wofry wavefront
+            #
+            if True:
+                filename = "tmp2016.h5"
+                from wofry.propagator.wavefront1D.generic_wavefront import GenericWavefront1D
+                output_wavefront = GenericWavefront1D.initialize_wavefront_from_arrays(
+                    1e-3 * xx, yy_amplitude, y_array_pi=None, wavelength=1e-10)
+                output_wavefront.set_photon_energy(1e3 * photon_energy_in_keV)
+                output_wavefront.save_h5_file(filename,
+                                              subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
+                print("File %s written to disk" % filename)
 
 
     plot_show()
