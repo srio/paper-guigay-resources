@@ -49,6 +49,12 @@ def run_symmetric(fig=2, plot_inset=1, use_automatic_chi=True):
         qmax = 5000
         qposition = 2466.0  # extra q position
         # qposition = 1679
+    elif fig == 3:
+        photon_energy_in_keV = 80.0
+        thickness = 1.0  # mm
+        p = 20000.0  # mm
+        qmax = 4000
+        qposition = 912.826
     elif fig in [4, 5, 6]:
         photon_energy_in_keV = 20.0
         thickness = 0.250 # mm
@@ -180,5 +186,7 @@ if __name__ == "__main__":
     # but for use_automatic_chi=1 the maximum is at the first peak.
     # run_symmetric(fig=4, plot_inset=1, use_automatic_chi=0)
     # run_symmetric(fig=4, plot_inset=1, use_automatic_chi=1)
+
+    run_symmetric(fig=3, plot_inset=1, use_automatic_chi=1)
 
     plot_show()

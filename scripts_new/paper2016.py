@@ -34,6 +34,23 @@ def sgmoins_fig2(x, q, npoints=1000):
     return sgplus_fig2(x, q, npoints=npoints)
 
 
+#
+# fig 5
+#
+def sgplus_fig5(x, q, npoints=1000):
+    v = numpy.linspace(-a, a, npoints)
+    y = numpy.zeros_like(v, dtype=complex)
+    qe = q * R / (R - q * mu1 - g * q)
+    be = 1 / qe + 1 / pe
+    invle = 1 / (pe + qe) + g / R
+    for i in range(v.size):
+        y[i] = mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (v[i] / a)**2)) * \
+                            numpy.exp(1j * k * 0.5 * v[i]**2 * invle) * \
+                            numpy.exp(- k * v[i] * kiny) * \
+                            numpy.cos(k * v[i] * x / (q * pe * be))
+    return numpy.trapz(y, x=v), be
+
+
 def get_max(xx, yy, verbose=1):
     i = numpy.argmax(yy)
     if verbose: print("Maximum found at x=%g, y=%g" % (xx[i],yy[i]))
@@ -58,15 +75,15 @@ if __name__ == "__main__":
     #
     # common values
     #
-    fig = 2
-    do_qscan = 0
+    fig = 3
+    do_qscan = 1
     do_xscan = 0
-    do_qzero = 1
+    do_qzero = 0
 
     R = 2000
     poisson_ratio = 0.2201
     SG = 1.0
-    use_automatic_chi = 0
+    use_automatic_chi = 1
     if fig == 2:
         photon_energy_in_keV = 80.0
         thickness = 1.0  # mm
@@ -79,21 +96,20 @@ if __name__ == "__main__":
         photon_energy_in_keV = 80.0
         thickness = 1.0  # mm
         p = 20000.0  # mm
-        # alfa_deg = 0.25
-        # alfa_deg = 0.75
-        alfa_deg = 1.5
+        alfa_deg = 0.01
         qmax = 4000
         qposition = 912.826
         factor = 0.9934
+        SG = -1
     elif fig in [4, 5, 6]:
         photon_energy_in_keV = 20.0
         thickness = 0.250  # mm
         p = 29000.0  # mm
-        alfa_deg = 2.0
+        alfa_deg = 1.0 # ALWAYS POSITIVE; USE SG TO CHANGE SIGN
         qmax = 10000
         qposition = 0  # extra q position
-        SG = -1.0
         factor = 0.9891
+        SG = -1
     else:
         raise NotImplementedError()
 
@@ -254,6 +270,193 @@ if __name__ == "__main__":
                 output_wavefront.save_h5_file(filename,
                                               subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
                 print("File %s written to disk" % filename)
+
+
+    #
+    #
+    #
+    #
+    #
+
+
+    #
+    # asymmetric Fig. 5 (p finite)
+    #
+    if fig in [3,4,5,6]:
+        if use_automatic_chi:
+            teta, chizero, chih = get_crystal_data("Si", hkl=[1, 1, 1], photon_energy_in_keV=photon_energy_in_keV,
+                                                   verbose=False)
+            lambda1 = codata.h * codata.c / codata.e / (photon_energy_in_keV * 1e3) * 1e3  # in mm
+            chimh = -1j * chih
+            chih2 = chih * chimh
+            """
+
+            """
+        else:
+            if fig in [4,5,6]:
+                teta = 5.67318 * (numpy.pi / 180)
+                lambda1 = 0.619927e-7
+                chih = (-0.922187 + 1j * 0.913110) * 1e-6
+                chimh = 1j * chih
+                chizero = -0.242370e-5 + 1j * 0.918640e-8
+                chih2 = chih * chimh
+            else:
+                raise NotImplementedError()
+
+        print("photon_energy_in_keV:", photon_energy_in_keV)
+        print("lambda1 in mm:", lambda1)
+        print("lambda1 in m, A:", lambda1 * 1e-3, lambda1 * 1e-3 * 1e10)
+        print("CrystalSi 111")
+        print(">>>>>>>>>> teta_deg:", teta * 180 / numpy.pi)
+        print(">>>>>>>>>> p:", p)
+        print(">>>>>>>>>> qposition:", qposition)
+        print(">>>>>>>>>> R:", R)
+
+        k = 2 * numpy.pi / lambda1
+        h = 2 * k * numpy.sin(teta)
+
+        print(">>>>>>>>>> chizero:", chizero)
+        print(">>>>>>>>>> chih:", chih)
+        print(">>>>>>>>>> chimh:", chimh)
+        print(">>>>>>>>>> chih*chihbar:", chih2)
+
+
+        u2 = 0.25 * chih2 * k**2
+        raygam = R * numpy.cos(teta)
+        kp = k * numpy.sin(2 * teta)
+        kp2 = kp * numpy.sin(2 * teta)
+
+        #
+        # TODO: Not working for alfa_deg=0
+        #
+
+        alfa = alfa_deg * numpy.pi / 180
+        teta1 = alfa + SG * teta
+        teta2 = alfa - SG * teta
+        fam1 = numpy.sin(teta1)
+        fam2 = numpy.sin(teta2)
+        gam1 = numpy.cos(teta1)
+        gam2 = numpy.cos(teta2)
+        t1 = thickness / gam1
+        t2 = thickness / gam2
+        qpoly = p * R * gam2 / (2 * p + R * gam1)
+        att = numpy.exp(-k * 0.5 * (t1 + t2) * numpy.imag(chizero))
+        s2max = 0.25 * t1 * t2
+        u2max = u2 * s2max  # Omega = k**2 chi_h chi_hbar / 4 ? (end of pag 490)
+        gamma = t2 / t1
+        a = numpy.sin(2 * teta) * t1 * 0.5
+        kin = 0.25 * (t1 - t2) * chizero / a
+        kinx = numpy.real(kin)
+        kiny = numpy.imag(kin)
+        com = numpy.sin(alfa) * (1 + gam1 * gam2 * (1 + poisson_ratio))
+        kp3 = 0.5 * k * (gamma * a)**2
+        # different from fig 2 (using SG)
+        mu1 = SG * (numpy.cos(alfa) * 2 * fam1 * gam1 + numpy.sin(alfa) * (fam1**2 + poisson_ratio * gam1**2)) / (numpy.sin(2*teta)* numpy.cos(teta))
+        mu2 = -SG * (numpy.cos(alfa) * 2 * fam2 * gam2 + numpy.sin(alfa) * (fam2**2 + poisson_ratio * gam2**2)) / (numpy.sin(2*teta)* numpy.cos(teta))
+        a1 = SG * (0.5 * thickness / numpy.cos(teta)) * (numpy.cos(alfa) * numpy.sin(teta1) + poisson_ratio * numpy.sin(alfa) * numpy.cos(teta1))
+        a2 = -SG * (0.5 * thickness / numpy.cos(teta)) * (numpy.cos(alfa) * numpy.sin(teta2) + poisson_ratio * numpy.sin(alfa) * numpy.cos(teta2))
+        acrist = -SG * h * com / R   # A in Eq 17
+
+        acmax = acrist * s2max
+        g = gamma * acrist * R / kp2
+        kap = u2max / acmax   # beta = Omega / A TODO acmax is zero when alfa is zero!!!!!!!!!!!!!!!!!!
+
+        # WARNING DIFFERNT FROM Fig 2 (+p)
+        pe = p * R / (gamma**2 * (R + p * mu2) - g * p)
+
+        print(">>>>> block 1: ", poisson_ratio, teta, alfa, lambda1, k, h, chizero, chih, chimh, chih2, u2, thickness, p, R, raygam, kp, kp2)
+
+        print(">>>>> block 2: ", SG, teta1, teta2, fam1, fam2, gam1, gam2, t1, t2, qpoly)
+        print("att", att, s2max, u2max, gamma, a, kin, kinx, kiny, com, kp3, mu1, mu2, a1, a2, acrist, acmax, g, kap, pe)
+
+        # q-scan
+        if do_qscan:
+            print("Calculating q-scan...")
+            t0 = time.time()
+            qq = numpy.linspace(100, qmax, 500)
+            yy = numpy.zeros_like(qq)
+            if alfa > 0 :
+                for j in range(qq.size):
+                    amplitude, be = sgplus_fig5(0, qq[j], npoints=500)
+                    yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j] * p * be))
+            else:
+                for j in range(qq.size):
+                    amplitude, be = sgmoins_fig5(0, qq[j], npoints=500)
+                    yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j] * p * be))
+            print("Time in calculating q-scan %f s" % (time.time() - t0))
+            plot(qq, yy,
+                 xtitle='q [mm]', ytitle="Intensity on axis", title="alfa=%g deg; SG=%d" % (alfa_deg, SG),
+                 show=0)
+            qdyn, _, imax = get_max(qq, yy)
+            qposition = qdyn
+        else:
+            qposition = 3730.66
+
+
+        # x-scan at finite q
+        if do_xscan:
+            print("Calculating x-scan...")
+            xx = numpy.linspace(-0.005, .005, 200)
+            yy = numpy.zeros_like(xx)
+            for j in range(xx.size):
+                amplitude, be = sgplus_fig5(xx[j], qposition, npoints=500)
+                yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qposition * p * be))
+            plot(xx, yy,
+                 xtitle='xi [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d q=%.1f mm" % (alfa_deg, SG, qposition),
+                 show=0)
+
+        # (equation 23)
+        # x-scan at q=0
+        if do_qzero:
+            print(">>>", 1 / (k * mu1 / 2 / R))
+            print("Calculating x-scan... a=", a)
+            omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
+            omega_real = numpy.real(omega)
+            omega_imag = numpy.imag(omega)
+            xc_over_q = omega_real - t1 * numpy.sin(alfa + teta) / (2 * R)
+
+            # xx = numpy.linspace(-0.0025, .0025, 200)
+
+
+            xx = numpy.linspace(-a * factor, a * factor, 2000)
+            yy_amplitude = numpy.zeros_like(xx, dtype=complex)
+            for j in range(xx.size):
+                x = xx[j]
+                # equation 23
+                amplitude = numpy.exp((1j * k * chizero.real - k * chizero.imag) * 0.25 * (t1 + t2)) * \
+                        mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (x / a) ** 2)) * \
+                        numpy.exp(-1j * x**2 * k * mu1 / 2 / R) *\
+                        numpy.exp(1j * x * k * (omega_real - t1 * numpy.sin(teta1) / 2 / R)) * \
+                        numpy.exp(- x * k * omega_imag)
+
+                yy_amplitude[j] = amplitude
+
+            plot(xx / a, numpy.abs(yy_amplitude)**2,
+                 xtitle='xi/a [mm]', ytitle="Intensity at q=0", title="alfa=%g deg" % (alfa_deg),
+                 show=0)
+
+
+            #
+            # write wofry wavefront
+            #
+            if True:
+                filename = "tmp2016.h5"
+                from wofry.propagator.wavefront1D.generic_wavefront import GenericWavefront1D
+                output_wavefront = GenericWavefront1D.initialize_wavefront_from_arrays(
+                    1e-3 * xx, yy_amplitude, y_array_pi=None, wavelength=1e-10)
+                output_wavefront.set_photon_energy(1e3 * photon_energy_in_keV)
+                output_wavefront.save_h5_file(filename,
+                                              subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
+                print("File %s written to disk" % filename)
+
+
+
+
+
+
+
+
+
 
 
     plot_show()
