@@ -99,15 +99,15 @@ if __name__ == "__main__":
     #
     # common values
     #
-    fig = 3
-    do_qscan = 0
+    fig = 5
+    do_qscan = 1
     do_xscan = 1
-    do_qzero = 1
+    do_qzero = 0
 
     R = 2000
     poisson_ratio = 0.2201
     SG = 1.0
-    use_automatic_chi = 1
+    use_automatic_chi = 0
     if fig == 2:
         photon_energy_in_keV = 80.0
         thickness = 1.0  # mm
@@ -129,7 +129,7 @@ if __name__ == "__main__":
         photon_energy_in_keV = 20.0
         thickness = 0.250  # mm
         p = 29000.0  # mm
-        alfa_deg = 1.0 # ALWAYS POSITIVE; USE SG TO CHANGE SIGN
+        alfa_deg = 2.0 # ALWAYS POSITIVE; USE SG TO CHANGE SIGN
         qmax = 10000
         qposition = 0  # extra q position
         factor = 0.9891
@@ -402,11 +402,14 @@ if __name__ == "__main__":
             if alfa > 0 :
                 for j in range(qq.size):
                     amplitude, be = sgplus_fig5(0, qq[j], npoints=500)
-                    yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j] * p * be))
+                    amplitude *= numpy.sqrt(att / (lambda1 * qq[j] * p * be))
+                    # yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j] * p * be))
+                    yy[j] = numpy.abs(amplitude) ** 2
             else:
                 for j in range(qq.size):
                     amplitude, be = sgmoins_fig5(0, qq[j], npoints=500)
-                    yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j] * p * be))
+                    amplitude *= numpy.sqrt(att / (lambda1 * qq[j] * p * be))
+                    yy[j] = numpy.abs(amplitude) ** 2
             print("Time in calculating q-scan %f s" % (time.time() - t0))
             plot(qq, yy,
                  xtitle='q [mm]', ytitle="Intensity on axis", title="alfa=%g deg; SG=%d" % (alfa_deg, SG),
@@ -419,11 +422,17 @@ if __name__ == "__main__":
         if do_xscan:
             print("Calculating x-scan...")
             xx = numpy.linspace(-0.005, .005, 200)
-            yy = numpy.zeros_like(xx)
+            yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
                 amplitude, be = sgplus_fig5(xx[j], qposition, npoints=500)
-                yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qposition * p * be))
-            plot(xx, yy,
+                amplitude *= numpy.sqrt(att / (lambda1 * qposition * p * be))
+                # omitted phase in eq 31
+                # m = g * a / R + gamma * (s / p + a**2 / 2 / R) ## CHECK, shown after eq 30
+                # amplitude *= numpy.exp(- 1j * (k / 2 / be) *\
+                #                        ( x / q + t1 * numpy.sin(teta1) / 2 / R + m)**2
+                #                        )
+                yy_amplitude[j] = amplitude
+            plot(xx, numpy.abs(yy_amplitude)**2,
                  xtitle='xi [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d q=%.1f mm" % (alfa_deg, SG, qposition),
                  show=0)
 
