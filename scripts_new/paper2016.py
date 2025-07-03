@@ -51,6 +51,30 @@ def sgplus_fig5(x, q, npoints=1000):
     return numpy.trapz(y, x=v), be
 
 
+# eq 30 for q=0 (integral in nu)
+def integral_eq30(x, npoints=1000):
+    v = numpy.linspace(-a, a, npoints)
+    y = numpy.zeros_like(v, dtype=complex)
+
+    for i in range(v.size):
+        s = 0      # ????????????????????????????????????
+        mu2prime = mu2 * gamma**2
+        a_2 = a**2 #  VERIFY?????????????????????????
+        SP = chizero * 0.25 * (t1 + t2) +\
+             v[i] * omega - \
+             (mu1 * x**2 + x * t1 * numpy.sin(teta1)) / (2 * R) - \
+             (mu2prime * (v[i] - x)**2 - a_2 * gamma * (v[i] - x)) / (2 * R)  + \
+             g * (a + x) * (v[i] - x) / R # equation 29 with u=x, nv
+
+        yprime = acrist * gamma * (a ** 2 - v[i] ** 2) / (numpy.sin(2 * teta)) ** 2  # defined before eq 29
+        kum = mpmath.hyp1f1(1j * kap, 1, 1j * yprime)
+
+        y[i] = gamma / numpy.sqrt(lambda1 * p) * \
+               numpy.exp(1j * k * (gamma * x - gamma * v[i] - s)**2 / (2 * p)) * \
+               kum * \
+               numpy.exp(1j * k * SP)
+    return numpy.trapz(y, x=v)
+
 def get_max(xx, yy, verbose=1):
     i = numpy.argmax(yy)
     if verbose: print("Maximum found at x=%g, y=%g" % (xx[i],yy[i]))
@@ -76,9 +100,9 @@ if __name__ == "__main__":
     # common values
     #
     fig = 3
-    do_qscan = 1
-    do_xscan = 0
-    do_qzero = 0
+    do_qscan = 0
+    do_xscan = 1
+    do_qzero = 1
 
     R = 2000
     poisson_ratio = 0.2201
@@ -96,11 +120,11 @@ if __name__ == "__main__":
         photon_energy_in_keV = 80.0
         thickness = 1.0  # mm
         p = 20000.0  # mm
-        alfa_deg = 0.01
-        qmax = 4000
-        qposition = 912.826
-        factor = 0.9934
-        SG = -1
+        alfa_deg = 1.5
+        qmax = 8000
+        qposition = -152.305 # 4675.35
+        factor = 2 # 5 # 0.9934
+        SG = 1
     elif fig in [4, 5, 6]:
         photon_energy_in_keV = 20.0
         thickness = 0.250  # mm
@@ -109,7 +133,7 @@ if __name__ == "__main__":
         qmax = 10000
         qposition = 0  # extra q position
         factor = 0.9891
-        SG = -1
+        SG = 1
     else:
         raise NotImplementedError()
 
@@ -231,7 +255,7 @@ if __name__ == "__main__":
         # x-scan at q=0
         if do_qzero:
             print(">>>", 1 / (k * mu1 / 2 / R))
-            print("Calculating x-scan... a=", a)
+            print("Calculating x-scan at q=0... a=", a)
             omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
             omega_real = numpy.real(omega)
             omega_imag = numpy.imag(omega)
@@ -254,7 +278,7 @@ if __name__ == "__main__":
                 yy_amplitude[j] = amplitude
 
             plot(xx / a, numpy.abs(yy_amplitude)**2,
-                 xtitle='xi/a [mm]', ytitle="Intensity at q=0", title="alfa=%g deg" % (alfa_deg),
+                 xtitle='xi/a [mm]', ytitle="Intensity at q=0", title="alfa=%g deg SG=%d" % (alfa_deg, SG),
                  show=0)
 
 
@@ -364,10 +388,10 @@ if __name__ == "__main__":
         # WARNING DIFFERNT FROM Fig 2 (+p)
         pe = p * R / (gamma**2 * (R + p * mu2) - g * p)
 
-        print(">>>>> block 1: ", poisson_ratio, teta, alfa, lambda1, k, h, chizero, chih, chimh, chih2, u2, thickness, p, R, raygam, kp, kp2)
-
-        print(">>>>> block 2: ", SG, teta1, teta2, fam1, fam2, gam1, gam2, t1, t2, qpoly)
-        print("att", att, s2max, u2max, gamma, a, kin, kinx, kiny, com, kp3, mu1, mu2, a1, a2, acrist, acmax, g, kap, pe)
+        # print(">>>>> block 1: ", poisson_ratio, teta, alfa, lambda1, k, h, chizero, chih, chimh, chih2, u2, thickness, p, R, raygam, kp, kp2)
+        #
+        # print(">>>>> block 2: ", SG, teta1, teta2, fam1, fam2, gam1, gam2, t1, t2, qpoly)
+        # print("att", att, s2max, u2max, gamma, a, kin, kinx, kiny, com, kp3, mu1, mu2, a1, a2, acrist, acmax, g, kap, pe)
 
         # q-scan
         if do_qscan:
@@ -389,8 +413,6 @@ if __name__ == "__main__":
                  show=0)
             qdyn, _, imax = get_max(qq, yy)
             qposition = qdyn
-        else:
-            qposition = 3730.66
 
 
         # x-scan at finite q
@@ -405,34 +427,23 @@ if __name__ == "__main__":
                  xtitle='xi [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d q=%.1f mm" % (alfa_deg, SG, qposition),
                  show=0)
 
-        # (equation 23)
+        # (equation 29 without propagation)
         # x-scan at q=0
         if do_qzero:
             print(">>>", 1 / (k * mu1 / 2 / R))
-            print("Calculating x-scan... a=", a)
+            print("Calculating x-scan at q=0... a=", a)
+            t0 = time.time()
             omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
-            omega_real = numpy.real(omega)
-            omega_imag = numpy.imag(omega)
-            xc_over_q = omega_real - t1 * numpy.sin(alfa + teta) / (2 * R)
-
-            # xx = numpy.linspace(-0.0025, .0025, 200)
-
-
-            xx = numpy.linspace(-a * factor, a * factor, 2000)
+            xx = numpy.linspace(-a * factor, a * factor, 1000)
             yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
                 x = xx[j]
-                # equation 23
-                amplitude = numpy.exp((1j * k * chizero.real - k * chizero.imag) * 0.25 * (t1 + t2)) * \
-                        mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (x / a) ** 2)) * \
-                        numpy.exp(-1j * x**2 * k * mu1 / 2 / R) *\
-                        numpy.exp(1j * x * k * (omega_real - t1 * numpy.sin(teta1) / 2 / R)) * \
-                        numpy.exp(- x * k * omega_imag)
-
+                amplitude = integral_eq30(xx[j], npoints=500)
                 yy_amplitude[j] = amplitude
 
-            plot(xx / a, numpy.abs(yy_amplitude)**2,
-                 xtitle='xi/a [mm]', ytitle="Intensity at q=0", title="alfa=%g deg" % (alfa_deg),
+            print("Calculation time: ", time.time() - t0)
+            plot(xx, numpy.abs(yy_amplitude)**2,
+                 xtitle='xi [mm]', ytitle="Intensity at q=0", title="alfa=%g deg SG=%d" % (alfa_deg, SG),
                  show=0)
 
 
@@ -448,13 +459,6 @@ if __name__ == "__main__":
                 output_wavefront.save_h5_file(filename,
                                               subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
                 print("File %s written to disk" % filename)
-
-
-
-
-
-
-
 
 
 
