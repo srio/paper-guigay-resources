@@ -44,10 +44,14 @@ def sgplus_fig5(x, q, npoints=1000):
     be = 1 / qe + 1 / pe
     invle = 1 / (pe + qe) + g / R
     for i in range(v.size):
-        y[i] = mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (v[i] / a)**2)) * \
+        yprime = acmax * (1 - (v[i] / a)**2)
+        kum =  mpmath.hyp1f1(1j * kap, 1, 1j * yprime)        # kum = 1.0
+
+        y[i] = kum * \
                             numpy.exp(1j * k * 0.5 * v[i]**2 * invle) * \
                             numpy.exp(- k * v[i] * kiny) * \
                             numpy.cos(k * v[i] * x / (q * pe * be))
+
     return numpy.trapz(y, x=v), be
 
 
@@ -59,7 +63,8 @@ def integral_eq30(x, npoints=1000):
     for i in range(v.size):
         s = 0      # ????????????????????????????????????
         mu2prime = mu2 * gamma**2
-        a_2 = a**2 #  VERIFY?????????????????????????
+        a_2 = a    #  VERIFY?????????????????????????
+        # SP(x, v) eq 29
         SP = chizero * 0.25 * (t1 + t2) +\
              v[i] * omega - \
              (mu1 * x**2 + x * t1 * numpy.sin(teta1)) / (2 * R) - \
@@ -73,6 +78,9 @@ def integral_eq30(x, npoints=1000):
                numpy.exp(1j * k * (gamma * x - gamma * v[i] - s)**2 / (2 * p)) * \
                kum * \
                numpy.exp(1j * k * SP)
+
+
+
     return numpy.trapz(y, x=v)
 
 def get_max(xx, yy, verbose=1):
@@ -100,14 +108,14 @@ if __name__ == "__main__":
     # common values
     #
     fig = 5
-    do_qscan = 1
+    do_qscan = 0
     do_xscan = 1
-    do_qzero = 0
+    do_qzero = 1
 
     R = 2000
     poisson_ratio = 0.2201
     SG = 1.0
-    use_automatic_chi = 0
+    use_automatic_chi = 1
     if fig == 2:
         photon_energy_in_keV = 80.0
         thickness = 1.0  # mm
@@ -122,18 +130,18 @@ if __name__ == "__main__":
         p = 20000.0  # mm
         alfa_deg = 1.5
         qmax = 8000
-        qposition = -152.305 # 4675.35
+        qposition = 0.001 # -152.305 # 4675.35
         factor = 2 # 5 # 0.9934
-        SG = 1
+        SG = -1
     elif fig in [4, 5, 6]:
         photon_energy_in_keV = 20.0
         thickness = 0.250  # mm
         p = 29000.0  # mm
         alfa_deg = 2.0 # ALWAYS POSITIVE; USE SG TO CHANGE SIGN
         qmax = 10000
-        qposition = 0  # extra q position
-        factor = 0.9891
-        SG = 1
+        qposition = 0.001  # extra q position
+        factor = 3 # 1.2 # 0.9891
+        SG = -1
     else:
         raise NotImplementedError()
 
@@ -254,7 +262,6 @@ if __name__ == "__main__":
         # (equation 23)
         # x-scan at q=0
         if do_qzero:
-            print(">>>", 1 / (k * mu1 / 2 / R))
             print("Calculating x-scan at q=0... a=", a)
             omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
             omega_real = numpy.real(omega)
@@ -422,44 +429,28 @@ if __name__ == "__main__":
         if do_xscan:
             print("Calculating x-scan...")
             xx = numpy.linspace(-0.005, .005, 200)
+            xx = numpy.linspace(-factor * a, factor * a, 200)
             yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
                 amplitude, be = sgplus_fig5(xx[j], qposition, npoints=500)
                 amplitude *= numpy.sqrt(att / (lambda1 * qposition * p * be))
-                # omitted phase in eq 31
-                # m = g * a / R + gamma * (s / p + a**2 / 2 / R) ## CHECK, shown after eq 30
-                # amplitude *= numpy.exp(- 1j * (k / 2 / be) *\
-                #                        ( x / q + t1 * numpy.sin(teta1) / 2 / R + m)**2
-                #                        )
+                # omitted phase (see just after equation 30)
+                s = 0
+                amplitude *= numpy.exp(1j * k * xx[j]**2 / 2 / qposition) * \
+                             numpy.exp(1j * k * s**2 / 2 / p) * \
+                             numpy.exp(1j * k * chizero.real * (t1 + t2) / 4)
+                # omitted phase (see just before equation 31)
+                m = g * a / R + gamma * (s / p + a**2 / 2 / R) ## CHECK, shown after eq 30
+                amplitude *= numpy.exp(- 1j * (k / 2 / be) *\
+                                       ( xx[j] / qposition + t1 * numpy.sin(teta1) / 2 / R + m)**2
+                                       )
                 yy_amplitude[j] = amplitude
-            plot(xx, numpy.abs(yy_amplitude)**2,
-                 xtitle='xi [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d q=%.1f mm" % (alfa_deg, SG, qposition),
+            plot(xx/a, numpy.abs(yy_amplitude)**2,
+                 xtitle='x/a [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d q=%.1f mm" % (alfa_deg, SG, qposition),
                  show=0)
 
-        # (equation 29 without propagation)
-        # x-scan at q=0
-        if do_qzero:
-            print(">>>", 1 / (k * mu1 / 2 / R))
-            print("Calculating x-scan at q=0... a=", a)
-            t0 = time.time()
-            omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
-            xx = numpy.linspace(-a * factor, a * factor, 1000)
-            yy_amplitude = numpy.zeros_like(xx, dtype=complex)
-            for j in range(xx.size):
-                x = xx[j]
-                amplitude = integral_eq30(xx[j], npoints=500)
-                yy_amplitude[j] = amplitude
-
-            print("Calculation time: ", time.time() - t0)
-            plot(xx, numpy.abs(yy_amplitude)**2,
-                 xtitle='xi [mm]', ytitle="Intensity at q=0", title="alfa=%g deg SG=%d" % (alfa_deg, SG),
-                 show=0)
-
-
-            #
             # write wofry wavefront
-            #
-            if True:
+            if 1:
                 filename = "tmp2016.h5"
                 from wofry.propagator.wavefront1D.generic_wavefront import GenericWavefront1D
                 output_wavefront = GenericWavefront1D.initialize_wavefront_from_arrays(
@@ -469,6 +460,36 @@ if __name__ == "__main__":
                                               subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
                 print("File %s written to disk" % filename)
 
+        # (equation 30 without propagation)
+        # x-scan at q=0
+        if do_qzero:
+            print("Calculating x-scan at q=0... a=", a)
+            t0 = time.time()
+            omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
+            xx = numpy.linspace(-a * factor, a * factor, 200)
+            yy_amplitude = numpy.zeros_like(xx, dtype=complex)
+            for j in range(xx.size):
+                x = xx[j]
+                amplitude = integral_eq30(xx[j], npoints=500)
+                yy_amplitude[j] = amplitude
+
+            print("Calculation time: ", time.time() - t0)
+            plot(xx/a, numpy.abs(yy_amplitude)**2,
+                 xtitle='x/a [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d  q=zero" % (alfa_deg, SG),
+                 show=0)
+
+            # write wofry wavefront
+            if 1:
+                filename = "tmp2016_q0.h5"
+                from wofry.propagator.wavefront1D.generic_wavefront import GenericWavefront1D
+                output_wavefront = GenericWavefront1D.initialize_wavefront_from_arrays(
+                    1e-3 * xx, yy_amplitude, y_array_pi=None, wavelength=1e-10)
+                output_wavefront.set_photon_energy(1e3 * photon_energy_in_keV)
+                output_wavefront.save_h5_file(filename,
+                                              subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
+                print("File %s written to disk" % filename)
+
+    plot_show()
 
 
 
