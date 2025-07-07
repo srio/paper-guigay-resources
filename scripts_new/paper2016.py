@@ -107,14 +107,18 @@ if __name__ == "__main__":
     #
     # common values
     #
-    fig = 5
-    do_qscan = 0
+    fig = 100 # 5  # use 100 for flat
+    do_qscan = 1
     do_xscan = 1
-    do_qzero = 1
+    do_qzero = 0
 
     R = 2000
     poisson_ratio = 0.2201
     SG = 1.0
+
+    npoints_q = 500
+    npoints_x = 200
+
     use_automatic_chi = 1
     if fig == 2:
         photon_energy_in_keV = 80.0
@@ -142,6 +146,17 @@ if __name__ == "__main__":
         qposition = 0.001  # extra q position
         factor = 3 # 1.2 # 0.9891
         SG = -1
+    elif fig == 100: # flat
+        photon_energy_in_keV = 20.0
+        thickness = 0.1  # mm
+        p = 1e6  # mm
+        alfa_deg = 2.0 # ALWAYS POSITIVE; USE SG TO CHANGE SIGN
+        qmax = 10000
+        qposition = 1e6  # extra q position
+        factor = 4500 # 1.2 # 0.9891
+        R = 1e6
+        SG = -1
+        npoints_x = 1000
     else:
         raise NotImplementedError()
 
@@ -230,7 +245,7 @@ if __name__ == "__main__":
         if do_qscan:
             print("Calculating q-scan...")
             t0 = time.time()
-            qq = numpy.linspace(100, qmax, 500)
+            qq = numpy.linspace(100, qmax, npoints_q)
             yy = numpy.zeros_like(qq)
             if alfa > 0 :
                 for j in range(qq.size):
@@ -251,7 +266,7 @@ if __name__ == "__main__":
         # x-scan at finite q
         if do_xscan:
             print("Calculating x-scan...")
-            xx = numpy.linspace(-0.0025, .0025, 200)
+            xx = numpy.linspace(-0.0025, .0025, npoints_x)
             yy = numpy.zeros_like(xx)
             for j in range(xx.size):
                 yy[j] = numpy.abs(sgplus_fig2(xx[j], qposition) ** 2 * att / (lambda1 * qposition))
@@ -271,7 +286,7 @@ if __name__ == "__main__":
             # xx = numpy.linspace(-0.0025, .0025, 200)
 
 
-            xx = numpy.linspace(-a * factor, a * factor, 2000)
+            xx = numpy.linspace(-a * factor, a * factor, npoints_x)
             yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
                 x = xx[j]
@@ -313,7 +328,7 @@ if __name__ == "__main__":
     #
     # asymmetric Fig. 5 (p finite)
     #
-    if fig in [3,4,5,6]:
+    else: # if fig in [3,4,5,6]:
         if use_automatic_chi:
             teta, chizero, chih = get_crystal_data("Si", hkl=[1, 1, 1], photon_energy_in_keV=photon_energy_in_keV,
                                                    verbose=False)
@@ -346,7 +361,7 @@ if __name__ == "__main__":
         k = 2 * numpy.pi / lambda1
         h = 2 * k * numpy.sin(teta)
 
-        print(">>>>>>>>>> chizero:", chizero)
+        print("chizero:", chizero)
         print(">>>>>>>>>> chih:", chih)
         print(">>>>>>>>>> chimh:", chimh)
         print(">>>>>>>>>> chih*chihbar:", chih2)
@@ -394,7 +409,7 @@ if __name__ == "__main__":
 
         # WARNING DIFFERNT FROM Fig 2 (+p)
         pe = p * R / (gamma**2 * (R + p * mu2) - g * p)
-
+        print(">>>>>>>>>> a: ", a)
         # print(">>>>> block 1: ", poisson_ratio, teta, alfa, lambda1, k, h, chizero, chih, chimh, chih2, u2, thickness, p, R, raygam, kp, kp2)
         #
         # print(">>>>> block 2: ", SG, teta1, teta2, fam1, fam2, gam1, gam2, t1, t2, qpoly)
@@ -404,7 +419,7 @@ if __name__ == "__main__":
         if do_qscan:
             print("Calculating q-scan...")
             t0 = time.time()
-            qq = numpy.linspace(100, qmax, 500)
+            qq = numpy.linspace(100, qmax, npoints_q)
             yy = numpy.zeros_like(qq)
             if alfa > 0 :
                 for j in range(qq.size):
@@ -428,8 +443,8 @@ if __name__ == "__main__":
         # x-scan at finite q
         if do_xscan:
             print("Calculating x-scan...")
-            xx = numpy.linspace(-0.005, .005, 200)
-            xx = numpy.linspace(-factor * a, factor * a, 200)
+            # xx = numpy.linspace(-0.005, .005, 200)
+            xx = numpy.linspace(-factor * a, factor * a, npoints_x)
             yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
                 amplitude, be = sgplus_fig5(xx[j], qposition, npoints=500)
@@ -445,9 +460,9 @@ if __name__ == "__main__":
                                        ( xx[j] / qposition + t1 * numpy.sin(teta1) / 2 / R + m)**2
                                        )
                 yy_amplitude[j] = amplitude
-            plot(xx/a, numpy.abs(yy_amplitude)**2,
-                 xtitle='x/a [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d q=%.1f mm" % (alfa_deg, SG, qposition),
-                 show=0)
+            plot(xx, numpy.abs(yy_amplitude)**2,
+                 xtitle='x [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d q=%.1f mm" % (alfa_deg, SG, qposition),
+                 grid=1, show=0)
 
             # write wofry wavefront
             if 1:
@@ -466,7 +481,7 @@ if __name__ == "__main__":
             print("Calculating x-scan at q=0... a=", a)
             t0 = time.time()
             omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
-            xx = numpy.linspace(-a * factor, a * factor, 200)
+            xx = numpy.linspace(-a * factor, a * factor, npoints_x)
             yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
                 x = xx[j]
