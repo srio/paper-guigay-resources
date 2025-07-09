@@ -63,7 +63,9 @@ def integral_eq30(x, npoints=1000):
     for i in range(v.size):
         s = 0      # ????????????????????????????????????
         mu2prime = mu2 * gamma**2
-        a_2 = a    #  VERIFY?????????????????????????
+        rho = poisson_ratio / (1 - poisson_ratio)
+        a_2 = thickness / numpy.cos(teta) * \
+              (numpy.cos(alfa) * numpy.sin(teta2) + rho * numpy.sin(alfa) * numpy.cos(teta2))
         # SP(x, v) eq 29
         SP = chizero * 0.25 * (t1 + t2) +\
              v[i] * omega - \
@@ -107,10 +109,10 @@ if __name__ == "__main__":
     #
     # common values
     #
-    fig = 100 # 5  # use 100 for flat
-    do_qscan = 1
-    do_xscan = 1
-    do_qzero = 0
+    fig = 5 # 5  # use 100 for flat
+    do_qscan = 0
+    do_xscan = 0
+    do_qzero = 1
 
     R = 2000
     poisson_ratio = 0.2201
