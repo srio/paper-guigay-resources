@@ -109,7 +109,7 @@ if __name__ == "__main__":
     #
     # common values
     #
-    fig = 5 # 5  # use 100 for flat
+    fig = 2 # 5  # use 100 for flat
     do_qscan = 0
     do_xscan = 0
     do_qzero = 1
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         p = 0.0  # mm
         alfa_deg = 0.05
         qmax = 5000
-        qposition = 2459.26
+        qposition = 0.001 # 2459.26
         factor = 0.9891
     elif fig == 3:
         photon_energy_in_keV = 80.0
@@ -147,7 +147,8 @@ if __name__ == "__main__":
         qmax = 10000
         qposition = 0.001  # extra q position
         factor = 3 # 1.2 # 0.9891
-        SG = -1
+        SG = 1
+        npoints_x = 1000
     elif fig == 100: # flat
         photon_energy_in_keV = 20.0
         thickness = 0.1  # mm
@@ -269,6 +270,7 @@ if __name__ == "__main__":
         if do_xscan:
             print("Calculating x-scan...")
             xx = numpy.linspace(-0.0025, .0025, npoints_x)
+            # xx = numpy.linspace(-a * factor * 100000, a * factor * 100000, npoints_x)
             yy = numpy.zeros_like(xx)
             for j in range(xx.size):
                 yy[j] = numpy.abs(sgplus_fig2(xx[j], qposition) ** 2 * att / (lambda1 * qposition))
@@ -484,6 +486,8 @@ if __name__ == "__main__":
             t0 = time.time()
             omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
             xx = numpy.linspace(-a * factor, a * factor, npoints_x)
+
+            xx = numpy.linspace(-0.6, 0.8, npoints_x)
             yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
                 x = xx[j]
@@ -491,8 +495,8 @@ if __name__ == "__main__":
                 yy_amplitude[j] = amplitude
 
             print("Calculation time: ", time.time() - t0)
-            plot(xx/a, numpy.abs(yy_amplitude)**2,
-                 xtitle='x/a [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d  q=zero" % (alfa_deg, SG),
+            plot(xx, numpy.abs(yy_amplitude)**2,
+                 xtitle='x [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d  q=zero" % (alfa_deg, SG),
                  show=0)
 
             # write wofry wavefront
