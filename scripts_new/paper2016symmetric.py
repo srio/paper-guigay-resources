@@ -3,7 +3,6 @@
 #
 
 import numpy
-import mpmath
 from scipy.special import jv as BesselJ
 import scipy.constants as codata
 from crystal_data import get_crystal_data
@@ -12,14 +11,14 @@ from srxraylib.plot.gol import plot, set_qt, plot_show
 # curved symmetric Laue, source at finite p
 # Eq. 13 in doi:10.1107/S0108767312044601  (2013) or
 # Eq. 23 in https://doi.org/10.1107/S1600577521012480 (2022)
-def integral_psisym(x, q, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, on_x_at_maximum=0):
-    v = numpy.linspace(-a, a, 2000)
+def guigay2013_eq13_Dxq(x, q, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, on_x_at_maximum=0, npoints=2000):
+    v = numpy.linspace(-a, a, npoints)
     y = numpy.zeros_like(v, dtype=complex)
     pe = p * RcosTheta / (RcosTheta + p)
     qe = q * RcosTheta / (RcosTheta - q)
     lesym = pe + qe
     # pe + qe # RcosTheta * q / (RcosTheta - q)
-    # fact_eta = (2 * x * qe / q / lesym +  a / raygam) # diverges at q=0
+    # fact_eta = (2 * x * qe / q / lesym +  a / RcosTheta) # diverges at q=0
     fact_eta = (2 * x * (RcosTheta / (RcosTheta - q)) / lesym + a / RcosTheta)
     if on_x_at_maximum:
         x = 0.0
@@ -31,49 +30,40 @@ def integral_psisym(x, q, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, on_x_at_max
 
     return numpy.trapz(y, x=v)
 
-# curved symmetric Laue, source at finite p
-# Eq. 13 in doi:10.1107/S0108767312044601  (2013) or
-# Eq. 23 in https://doi.org/10.1107/S1600577521012480 (2022)
-def integral_psisym(x, q, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, on_x_at_maximum=0):
-    v = numpy.linspace(-a, a, 2000)
+# eq 10  in doi:10.1107/S0108767312044601
+def guigay2013_eq10_Dup0q0(u, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, npoints=2000):
+    return BesselJ(0, Z * numpy.sqrt(a ** 2 - u ** 2)) * numpy.exp(-1j * k * 0.5 * u * (a + u) / RcosTheta)
+
+# eq 12  in doi:10.1107/S0108767312044601  (2013)
+def guigay2013_eq12_Du(u, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0):
+    v = numpy.linspace(-a, +a, 2000)
     y = numpy.zeros_like(v, dtype=complex)
-    pe = p * RcosTheta / (RcosTheta + p)
-    qe = q * RcosTheta / (RcosTheta - q)
-    lesym = pe + qe
-    # pe + qe # RcosTheta * q / (RcosTheta - q)
-    # fact_eta = (2 * x * qe / q / lesym +  a / raygam) # diverges at q=0
-    fact_eta = (2 * x * (RcosTheta / (RcosTheta - q)) / lesym + a / RcosTheta)
-    if on_x_at_maximum:
-        x = 0.0
-        fact_eta = 0.0
-
+    lambda1 = 2 * numpy.pi / k
+    pe = 1 / (1 / p + 1 / RcosTheta)
     for i in range(v.size):
-        arg_bessel = Z * numpy.sqrt((a + v[i]) * (a - v[i]))
-        y[i] = BesselJ(0, arg_bessel) * numpy.exp(1j * k * 0.5 * (v[i] ** 2 / lesym - v[i] * fact_eta))
+        arg1 = a**2 - v[i]**2
+        if arg1 < 0: arg1 = 0
 
-    return numpy.trapz(y, x=v)
+        y[i] = 1 / numpy.sqrt(1j * lambda1 * p) * \
+               numpy.exp(1j * k * 0.5 * (u - v[i]) ** 2 / pe) * \
+               numpy.exp(-1j * k * 0.5 / RcosTheta * a * v[i]) * \
+               BesselJ(0, Z * numpy.sqrt(arg1))
+    return numpy.trapz(y, x=v) * numpy.exp(-1j * k * 0.5 * u**2 / RcosTheta)
 
 # curved symmetric Laue, source at finite p, q=0
-# First equation in section 4.2  in doi:10.1107/S0108767312044601  (2013) or
-def integral_Du(u, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0):
-    t = numpy.linspace(u-a, u+a, 2000)
+# First equation in section 4.2  in doi:10.1107/S0108767312044601  (2013)
+def guigay2013_eq12_integralVStau(u, k=0.0, Z=0.0, a=0.0, RcosTheta=0.0, p=0.0, npoints=2000):
+    t = numpy.linspace(u - a, u + a, npoints)
     y = numpy.zeros_like(t, dtype=complex)
     lambda1 = 2 * numpy.pi / k
     for i in range(t.size):
         arg1 = a**2 - (u - t[i])**2
-        if arg1 >= 0:
-            y[i] = 1 / numpy.sqrt(1j * lambda1 * p) * \
-                   numpy.exp(1j * k * 0.5 * t[i] ** 2 / p) * \
-                   numpy.exp(1j * k * 0.5 / RcosTheta * (t[i] * (t[i] - a) - u * (u + a))) * \
-                   BesselJ(0, Z * numpy.sqrt(a**2 - (u - t[i])**2 ))
-        else:
-            y[i] = 1 / numpy.sqrt(1j * lambda1 * p) * \
-                   numpy.exp(1j * k * 0.5 * t[i] ** 2 / p) * \
-                   numpy.exp(1j * k * 0.5 / RcosTheta * (t[i] * (t[i] - a) - u * (u + a))) * \
-                   BesselJ(0, 0)
-
+        if arg1 < 0: arg1 = 0
+        y[i] = 1 / numpy.sqrt(1j * lambda1 * p) * \
+               numpy.exp(1j * k * 0.5 * t[i] ** 2 / p) * \
+               numpy.exp(1j * k * 0.5 / RcosTheta * (t[i] * (t[i] + a) - u * (u + a))) * \
+               BesselJ(0, Z * numpy.sqrt(arg1))
     return numpy.trapz(y, x=t)
-
 
 def get_max(xx, yy, verbose=1):
     i = numpy.argmax(yy)
@@ -119,18 +109,21 @@ def run_symmetric(fig=2, plot_qscan=1, plot_xscan=1, plot_qzero=0, factor=1.0, q
         lambda1 = codata.h * codata.c / codata.e / (photon_energy_in_keV * 1e3) * 1e3 # in mm
         chihm = -1j * chih
     else:
-        if fig == 2:
+        if fig in [2, 3]:
             teta = numpy.radians(1.4161222418)
             lambda1 = 0.01549817556e-6
             chizero = -0.150710e-6 + 1j * 0.290718e-10
             chih = (-5.69862 + 1j * 5.69574) * 1e-8
             chihm = 1j * chih
-        else:# # 20 keV
+        elif fig in [4, 5, 6]: # # 20 keV
             teta = numpy.radians(5.67310)
             lambda1 = 0.619927e-7
             chizero = -0.242370e-5 + 1j * 0.918640e-8
             chih = (-0.922187 + 1j * 0.9131110) * 1e-6
             chihm = 1j * chih
+        else:
+            raise NotImplementedError()
+
 
     print("photon_energy_in_keV:", photon_energy_in_keV)
     print("CrystalSi 111")
@@ -160,8 +153,8 @@ def run_symmetric(fig=2, plot_qscan=1, plot_xscan=1, plot_qzero=0, factor=1.0, q
 
     R = 2000.0
     print("R", R)
-    raygam = R * numpy.cos(teta)
-    print("raygam", raygam)
+    RcosTheta = R * numpy.cos(teta)
+    print("RcosTheta", RcosTheta)
 
     #
     # this part uses the source at p=finite, R finite, and calculates I(xi, qdyn) and I(focus,q) to obtain qdyn
@@ -175,7 +168,7 @@ def run_symmetric(fig=2, plot_qscan=1, plot_xscan=1, plot_qzero=0, factor=1.0, q
 
 
         for j in range(qq.size):
-            yya = integral_psisym(0, qq[j], k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p, on_x_at_maximum=1)
+            yya = guigay2013_eq13_Dxq(0, qq[j], k=k, Z=Zsym, a=asym, RcosTheta=RcosTheta, p=p, on_x_at_maximum=1)
             yya *= numpy.sqrt(attsym / (lambda1 * numpy.abs(p + qq[j])))
             yy_ampl[j] = yya
         yy = numpy.abs(yy_ampl)**2
@@ -183,7 +176,7 @@ def run_symmetric(fig=2, plot_qscan=1, plot_xscan=1, plot_qzero=0, factor=1.0, q
         if p == 0.0:
             q_lensequation = 0
         else:
-            q_lensequation = 1.0 / (2 / raygam - 1 / p)
+            q_lensequation = 1.0 / (2 / RcosTheta - 1 / p)
 
 
         qdyn, _, imax  = get_max(qq, yy)
@@ -199,13 +192,13 @@ def run_symmetric(fig=2, plot_qscan=1, plot_xscan=1, plot_qzero=0, factor=1.0, q
         yy1_ampl = numpy.zeros_like(xi, dtype=complex)
         for j in range(xi.size):
             yy1_ampl[j] = numpy.sqrt(attsym / (lambda1 * numpy.abs(p + qdyn))) * \
-                     integral_psisym(xi[j], qdyn, k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p)
+                     guigay2013_eq13_Dxq(xi[j], qdyn, k=k, Z=Zsym, a=asym, RcosTheta=RcosTheta, p=p)
         yy1 =  numpy.abs(yy1_ampl) ** 2
 
         yy2_ampl = numpy.zeros_like(xi, dtype=complex)
         for j in range(xi.size):
             yy2_ampl[j] = numpy.sqrt(attsym / (lambda1 * (p + qposition))) * \
-                          integral_psisym(xi[j], qposition, k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p)
+                          guigay2013_eq13_Dxq(xi[j], qposition, k=k, Z=Zsym, a=asym, RcosTheta=RcosTheta, p=p)
 
         yy2 =  numpy.abs(yy2_ampl) ** 2
 
@@ -227,22 +220,36 @@ def run_symmetric(fig=2, plot_qscan=1, plot_xscan=1, plot_qzero=0, factor=1.0, q
             print("File %s written to disk AT A DISTANCE=%f mm" % (filename, qposition))
 
     if plot_qzero: # lateral scan (I vs chi)
-        xi = numpy.linspace(-asym, asym, 1000)
-        xi = numpy.linspace(-0.4*asym, 1.4*asym, 2000)
-        yy_ampl = numpy.zeros_like(xi, dtype=complex)
+        yy_ampl = numpy.zeros(2000, dtype=complex)
         if p == 0: # EQUATION 10
+            x0 = 0
+            xi = numpy.linspace(-asym, asym, yy_ampl.size)
+            # for j in range(xi.size):
+            #     yy_ampl[j] = BesselJ(0, Zsym * numpy.sqrt(asym**2 - xi[j]**2)) * \
+            #        numpy.exp(-1j * k * 0.5 * xi[j] * (asym + xi[j]) / RcosTheta)
+            yy_ampl = guigay2013_eq10_Dup0q0(xi, k=k, Z=Zsym, a=asym, RcosTheta=RcosTheta, p=p)
+        else:  # EQUATION 12
+            x0 = -asym / (1 / p + 1 / RcosTheta) / 2 / RcosTheta
+            xi = numpy.linspace(-1.0 * asym + x0, 1.0 * asym + x0, yy_ampl.size)
+
             for j in range(xi.size):
-                yy_ampl[j] = BesselJ(0, Zsym * numpy.sqrt(asym**2 - xi[j]**2)) * \
-                   numpy.exp(-1j * k * 0.5 * xi[j] * (asym + xi[j]) / raygam)
-        else:
-            for j in range(xi.size):
-                yy_ampl[j] = integral_Du(xi[j], k=k, Z=Zsym, a=asym, RcosTheta=raygam, p=p)
+                yy_ampl[j] = guigay2013_eq12_Du(xi[j], k=k, Z=Zsym, a=asym, RcosTheta=RcosTheta, p=p)
+                # Eq 12 before change of variables
+                # yy_ampl[j] = guigay2013_eq12_integralVStau(xi[j], k=k, Z=Zsym, a=asym, RcosTheta=RcosTheta, p=p)
 
         yy1 = numpy.abs(yy_ampl)**2
         plot(xi / asym, yy1,
              xtitle='x/a', ytitle="Intensity",
              title="xi scan R=%g mm, p=%.1f, q=zero, a=%g mm" % (R, p, asym),
              show=0)
+
+        plot(xi, yy1,
+             xi - x0, yy1,
+             legend=['vs x', 'vs x-x0; x0=%f' % x0],
+             xtitle='x [mm]', ytitle="Intensity",
+             title="xi scan R=%g mm, p=%.1f, q=zero, a=%g mm" % (R, p, asym),
+             show=0)
+
 
         # write wofry wavefront
         if 1:
@@ -257,24 +264,7 @@ def run_symmetric(fig=2, plot_qscan=1, plot_xscan=1, plot_qzero=0, factor=1.0, q
             print("File %s written to disk" % filename)
 
 if __name__ == "__main__":
-    #
-    # test Kummer
-    #
-    if False:
-        # In[86] := Hypergeometric1F1[0.1, 1, 0.2 * I]
-        # Out[86] = 0.998902 + 0.0199487
-        out = mpmath.hyp1f1(0.1, 1, 0.2j)
-        print(out)
 
-        # In[87]:= Hypergeometric1F1[0.1 * I , 1, 0.2 * I]
-        # Out[87]= 0.980144 - 0.000991696 I
-        out = mpmath.hyp1f1(0.1j, 1, 0.2j)
-        print(out)
-
-
-    #
-    # alpha=0
-    #
 
     # run_symmetric(fig=2, plot_xscan=1, use_automatic_chi=0)
     # run_symmetric(fig=2, plot_xscan=1, use_automatic_chi=1)
@@ -284,6 +274,6 @@ if __name__ == "__main__":
     # run_symmetric(fig=4, plot_xscan=1, use_automatic_chi=0)
     # run_symmetric(fig=4, plot_xscan=1, use_automatic_chi=1)
 
-    run_symmetric(fig=3, plot_qscan=0, plot_xscan=0, plot_qzero=1, factor=1.0, qposition=None,  use_automatic_chi=0)
+    run_symmetric(fig=2, plot_qscan=1, plot_xscan=1, plot_qzero=0, factor=1.0, qposition=None,  use_automatic_chi=0)
 
     plot_show()
