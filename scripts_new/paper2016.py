@@ -10,13 +10,24 @@ from crystal_data import get_crystal_data
 from srxraylib.plot.gol import plot, set_qt, plot_show
 import time
 
+# equation 23
+def guigay2016_eq23_Dup0q0(x):
+    return numpy.exp((1j * k * chizero.real - k * chizero.imag) * 0.25 * (t1 + t2)) * \
+                mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (x / a) ** 2)) * \
+                numpy.exp(-1j * x ** 2 * k * mu1 / 2 / R) * \
+                numpy.exp(1j * x * k * (omega_real - t1 * numpy.sin(teta1) / 2 / R)) * \
+                numpy.exp(- x * k * omega_imag)
+
+
+
 # equation 24?
 # file Wilkins_p0.nb
 # sgplus[x_, q_] :=
 #   2*NIntegrate[
 #     Hypergeometric1F1[I*kap, 1, I*acmax*(1 - (v/a)^2)]*
 #      Exp[0.5*I*k*v^2*invle[q]]*Cos[k*v*(x/q - I*kiny)], {v, 0, a}];
-def sgplus_fig2(x, q, npoints=1000):
+def guigay2016_eq24_Dxqp0(x, q, npoints=1000):
+    if numpy.abs(x) > a: return 0
     v = numpy.linspace(0, a, npoints)
     y = numpy.zeros_like(v, dtype=complex)
     invle = 1 / q - mu1 / R
@@ -24,14 +35,27 @@ def sgplus_fig2(x, q, npoints=1000):
         y[i] = mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (v[i] / a)**2)) * \
             numpy.exp(1j * k * 0.5 * v[i]**2 * invle) * \
             numpy.cos(k * v[i] * (x / q - 1j * kiny))
-    return 2 * numpy.trapz(y, x=v)
+    return 2 * numpy.trapz(y, x=v) * numpy.sqrt(att / numpy.abs(lambda1 * q))
+
+# NOT WORKING...
+def guigay2016_eq24_Dxqp0_new(x, q, npoints=1000):
+    u = numpy.linspace(-a, a, npoints)
+    y = numpy.zeros_like(u, dtype=complex)
+
+    for i in range(npoints):
+        y[i] = 1 / (numpy.sqrt(lambda1 * q)) * \
+               numpy.exp(1j * k * 0.5 * (x - u[i])**2 / 2 / q) * \
+               guigay2016_eq23_Dup0q0(u[i])
+
+    return numpy.trapz(y, x=u)
+
 
 # sgmoins[x_, q_] :=
 #   2*NIntegrate[
 #     Hypergeometric1F1[I*kap, 1, I*acmax*(1 - (v/a)^2)]*
 #      Exp[0.5*I*k*v^2*invle[q]]*Cos[k*v*(x/q - I*kiny)], {v, 0, a}];
-def sgmoins_fig2(x, q, npoints=1000):
-    return sgplus_fig2(x, q, npoints=npoints)
+# def sgmoins_fig2(x, q, npoints=1000):
+#     return guigay2016_eq24_Dxqp0(x, q, npoints=npoints)
 
 
 #
@@ -111,25 +135,25 @@ if __name__ == "__main__":
     #
     fig = 2 # 5  # use 100 for flat
     do_qscan = 0
-    do_xscan = 0
-    do_qzero = 1
+    do_xscan = 1
+    do_qzero = 0
 
     R = 2000
     poisson_ratio = 0.2201
-    SG = 1.0
 
     npoints_q = 500
     npoints_x = 200
 
-    use_automatic_chi = 1
+    use_automatic_chi = 0
     if fig == 2:
         photon_energy_in_keV = 80.0
         thickness = 1.0  # mm
         p = 0.0  # mm
-        alfa_deg = 0.05
+        alfa_deg = -0.05  # CAN BE POSITIVE OR NEGATIVE
         qmax = 5000
-        qposition = 0.001 # 2459.26
-        factor = 0.9891
+        qposition = 1681.0 # 2459.26
+        factor = 0.1 # 0.9891
+        SG = 999999  # NOT USED
     elif fig == 3:
         photon_energy_in_keV = 80.0
         thickness = 1.0  # mm
@@ -215,8 +239,8 @@ if __name__ == "__main__":
         #
 
         alfa = alfa_deg * numpy.pi / 180
-        teta1 = alfa + SG * teta
-        teta2 = alfa - SG * teta
+        teta1 = alfa + teta
+        teta2 = alfa - teta
         fam1 = numpy.sin(teta1)
         fam2 = numpy.sin(teta2)
         gam1 = numpy.cos(teta1)
@@ -244,23 +268,21 @@ if __name__ == "__main__":
         kap = u2max / acmax   # beta = Omega / A TODO acmax is zero when alfa is zero!!!!!!!!!!!!!!!!!!
         pe = p * R / (gamma**2 * (R - p * mu2) - g * p)
 
+        print(">>>>>>>>>> a:", a)
+
         # q-scan
         if do_qscan:
             print("Calculating q-scan...")
             t0 = time.time()
             qq = numpy.linspace(100, qmax, npoints_q)
             yy = numpy.zeros_like(qq)
-            if alfa > 0 :
-                for j in range(qq.size):
-                    amplitude = sgplus_fig2(0, qq[j], npoints=500)
-                    yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j]))
-            else:
-                for j in range(qq.size):
-                    amplitude = sgmoins_fig2(0, qq[j], npoints=500)
-                    yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j]))
+
+            for j in range(qq.size):
+                amplitude = guigay2016_eq24_Dxqp0(0, qq[j], npoints=500)
+                yy[j] = numpy.abs(amplitude) ** 2
             print("Time in calculating q-scan %f s" % (time.time() - t0))
             plot(qq, yy,
-                 xtitle='q [mm]', ytitle="Intensity on axis", title="alfa=%g deg" % (alfa_deg),
+                 xtitle='q [mm]', ytitle="Intensity on axis", title="alfa (signed)=%g deg" % (alfa_deg),
                  show=0)
             qdyn, _, imax = get_max(qq, yy)
             qposition = qdyn
@@ -269,14 +291,35 @@ if __name__ == "__main__":
         # x-scan at finite q
         if do_xscan:
             print("Calculating x-scan...")
-            xx = numpy.linspace(-0.0025, .0025, npoints_x)
-            # xx = numpy.linspace(-a * factor * 100000, a * factor * 100000, npoints_x)
-            yy = numpy.zeros_like(xx)
+
+            omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
+            omega_real = numpy.real(omega)
+            omega_imag = numpy.imag(omega)
+            xc_over_q = omega_real - t1 * numpy.sin(alfa + teta) / (2 * R)
+
+            xx = numpy.linspace(-factor * a, factor * a, npoints_x)
+            # xx = numpy.linspace(-0.025, 0.025, npoints_x)
+            yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
-                yy[j] = numpy.abs(sgplus_fig2(xx[j], qposition) ** 2 * att / (lambda1 * qposition))
-            plot(xx, yy,
-                 xtitle='xi [mm]', ytitle="Intensity", title="alfa=%g deg q=%.1f mm" % (alfa_deg, qposition),
+                yy_amplitude[j] = guigay2016_eq24_Dxqp0(xx[j], qposition, npoints=500)
+                # yy_amplitude[j] = guigay2016_eq24_Dxqp0_new(xx[j], qposition, npoints=500)
+            plot(xx, numpy.abs(yy_amplitude)**2,
+                 xtitle='xi [mm]', ytitle="Intensity",
+                 title="alfa (signed)=%g deg q=%.1f mm" % (alfa_deg, qposition),
                  show=0)
+
+            #
+            # write wofry wavefront
+            #
+            if True:
+                filename = "tmp2016.h5"
+                from wofry.propagator.wavefront1D.generic_wavefront import GenericWavefront1D
+                output_wavefront = GenericWavefront1D.initialize_wavefront_from_arrays(
+                    1e-3 * xx, yy_amplitude, y_array_pi=None, wavelength=1e-10)
+                output_wavefront.set_photon_energy(1e3 * photon_energy_in_keV)
+                output_wavefront.save_h5_file(filename,
+                                              subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
+                print("File %s written to disk" % filename)
 
         # (equation 23)
         # x-scan at q=0
@@ -287,32 +330,21 @@ if __name__ == "__main__":
             omega_imag = numpy.imag(omega)
             xc_over_q = omega_real - t1 * numpy.sin(alfa + teta) / (2 * R)
 
-            # xx = numpy.linspace(-0.0025, .0025, 200)
-
-
-            xx = numpy.linspace(-a * factor, a * factor, npoints_x)
+            xx = numpy.linspace(-a, a, npoints_x)
             yy_amplitude = numpy.zeros_like(xx, dtype=complex)
-            for j in range(xx.size):
-                x = xx[j]
-                # equation 23
-                amplitude = numpy.exp((1j * k * chizero.real - k * chizero.imag) * 0.25 * (t1 + t2)) * \
-                        mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (x / a) ** 2)) * \
-                        numpy.exp(-1j * x**2 * k * mu1 / 2 / R) *\
-                        numpy.exp(1j * x * k * (omega_real - t1 * numpy.sin(teta1) / 2 / R)) * \
-                        numpy.exp(- x * k * omega_imag)
 
-                yy_amplitude[j] = amplitude
+            for j in range(xx.size):
+                yy_amplitude[j] = guigay2016_eq23_Dup0q0(xx[j])
 
             plot(xx / a, numpy.abs(yy_amplitude)**2,
-                 xtitle='xi/a [mm]', ytitle="Intensity at q=0", title="alfa=%g deg SG=%d" % (alfa_deg, SG),
+                 xtitle='xi/a [mm]', ytitle="Intensity at q=0", title="alfa (signed)=%g deg" % (alfa_deg),
                  show=0)
-
 
             #
             # write wofry wavefront
             #
             if True:
-                filename = "tmp2016.h5"
+                filename = "tmp2016_q0.h5"
                 from wofry.propagator.wavefront1D.generic_wavefront import GenericWavefront1D
                 output_wavefront = GenericWavefront1D.initialize_wavefront_from_arrays(
                     1e-3 * xx, yy_amplitude, y_array_pi=None, wavelength=1e-10)
