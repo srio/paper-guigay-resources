@@ -196,9 +196,9 @@ if __name__ == "__main__":
     set_qt()
 
 
-    # calculate_fig(fig=4, plot_inset=1)
+    calculate_fig(fig=4, plot_inset=1)
     # calculate_fig(fig=5, plot_inset=1)
-    calculate_fig(fig=6, plot_inset=0)
+    # calculate_fig(fig=6, plot_inset=0)
 
 
     plot_show()

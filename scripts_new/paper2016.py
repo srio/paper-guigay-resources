@@ -10,7 +10,7 @@ from crystal_data import get_crystal_data
 from srxraylib.plot.gol import plot, set_qt, plot_show
 import time
 
-# equation 23
+# equation 23 (p=q=0)
 def guigay2016_eq23_Dup0q0(x):
     return numpy.exp((1j * k * chizero.real - k * chizero.imag) * 0.25 * (t1 + t2)) * \
                 mpmath.hyp1f1(1j * kap, 1, 1j * acmax * (1 - (x / a) ** 2)) * \
@@ -20,7 +20,7 @@ def guigay2016_eq23_Dup0q0(x):
 
 
 
-# equation 24?
+# equation 24? (p=0, finite q)
 # file Wilkins_p0.nb
 # sgplus[x_, q_] :=
 #   2*NIntegrate[
@@ -78,6 +78,40 @@ def sgplus_fig5(x, q, npoints=1000):
 
     return numpy.trapz(y, x=v), be
 
+# eq 28 for q=0 (integral in nu)
+def integral_eq28(x, npoints=1000):
+    tau = numpy.linspace(gamma * (x - a), gamma * (x + a), npoints)
+    y = numpy.zeros_like(tau, dtype=complex)
+
+    for i in range(tau.size):
+        s = 0      # ????????????????????????????????????
+        mu2prime = mu2 * gamma**2
+        rho = poisson_ratio / (1 - poisson_ratio)
+        a_2 = thickness / numpy.cos(teta) * \
+              (numpy.cos(alfa) * numpy.sin(teta2) + rho * numpy.sin(alfa) * numpy.cos(teta2))
+
+        nu = x - tau[i] / gamma
+        if 0: # numpy.abs(nu) > a:
+            y[i] = 0
+        else:
+            # # SP(x, v) eq 29
+            SP = chizero * 0.25 * (t1 + t2) +\
+                 nu * omega - \
+                 (mu1 * x**2 + x * t1 * numpy.sin(teta1)) / (2 * R) - \
+                 (mu2prime * (nu - x)**2 - a_2 * gamma * (nu - x)) / (2 * R)  + \
+                 g * (a + x) * (nu - x) / R # equation 29 with u=x
+            #
+
+            yprime = acrist * gamma * (a ** 2 - nu ** 2) / (numpy.sin(2 * teta)) ** 2  # defined before eq 29
+            kum = mpmath.hyp1f1(1j * kap, 1, 1j * yprime)
+
+            P = kum * numpy.exp(1j * k * SP)
+
+            y[i] = 1 / numpy.sqrt(lambda1 * p) * \
+                   numpy.exp(1j * k * (tau[i] - s)**2 / (2 * p)) * \
+                   P
+
+    return numpy.trapz(y, x=tau)
 
 # eq 30 for q=0 (integral in nu)
 def integral_eq30(x, npoints=1000):
@@ -105,8 +139,6 @@ def integral_eq30(x, npoints=1000):
                kum * \
                numpy.exp(1j * k * SP)
 
-
-
     return numpy.trapz(y, x=v)
 
 def get_max(xx, yy, verbose=1):
@@ -133,10 +165,10 @@ if __name__ == "__main__":
     #
     # common values
     #
-    fig = 2 # 5  # use 100 for flat
-    do_qscan = 0
+    fig = 4 # 5  # use 100 for flat
+    do_qscan = 1
     do_xscan = 1
-    do_qzero = 0
+    do_qzero = 1
 
     R = 2000
     poisson_ratio = 0.2201
@@ -167,9 +199,9 @@ if __name__ == "__main__":
         photon_energy_in_keV = 20.0
         thickness = 0.250  # mm
         p = 29000.0  # mm
-        alfa_deg = 2.0 # ALWAYS POSITIVE; USE SG TO CHANGE SIGN
+        alfa_deg = 1.0 # ALWAYS POSITIVE; USE SG TO CHANGE SIGN
         qmax = 10000
-        qposition = 0.001  # extra q position
+        qposition = 3552.1 # 0.001  # extra q position
         factor = 3 # 1.2 # 0.9891
         SG = 1
         npoints_x = 1000
@@ -517,14 +549,19 @@ if __name__ == "__main__":
             print("Calculating x-scan at q=0... a=", a)
             t0 = time.time()
             omega = 0.25 * (t1 - t2) * chizero / a  # omega following the definition found after eq 22
-            xx = numpy.linspace(-a * factor, a * factor, npoints_x)
+            omega_real = numpy.real(omega)
+            omega_imag = numpy.imag(omega)
+            xc_over_q = omega_real - t1 * numpy.sin(alfa + teta) / (2 * R)
 
-            xx = numpy.linspace(-0.6, 0.8, npoints_x)
+            xx = numpy.linspace(-a * 4, a * 4, npoints_x) - 0.01511
             yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
-                x = xx[j]
-                amplitude = integral_eq30(xx[j], npoints=500)
+                # x = xx[j]
+                # amplitude = integral_eq30(xx[j], npoints=100)
+                amplitude = integral_eq28(xx[j], npoints=100)
                 yy_amplitude[j] = amplitude
+                # yy_amplitude[j] = guigay2016_eq23_Dup0q0(xx[j])
+
 
             print("Calculation time: ", time.time() - t0)
             plot(xx, numpy.abs(yy_amplitude)**2,
@@ -541,9 +578,5 @@ if __name__ == "__main__":
                 output_wavefront.save_h5_file(filename,
                                               subgroupname="wfr",intensity=True,phase=False,overwrite=True,verbose=False)
                 print("File %s written to disk" % filename)
-
-    plot_show()
-
-
 
     plot_show()
