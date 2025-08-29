@@ -78,13 +78,46 @@ def sgplus_fig5(x, q, npoints=1000):
 
     return numpy.trapz(y, x=v), be
 
+#
+# fig 5 - Eq. 31
+#
+def integral_equation31(x, q, npoints=1000):
+    v = numpy.linspace(-a, a, npoints)
+    y = numpy.zeros_like(v, dtype=complex)
+    qe = q * R / (R - q * mu1 - g * q)
+    be = 1 / qe + 1 / pe
+    invle = 1 / (pe + qe) + g / R
+    s = 0
+    for i in range(v.size):
+        yprime = acmax * (1 - (v[i] / a)**2)
+        kum =  mpmath.hyp1f1(1j * kap, 1, 1j * yprime)        # kum = 1.0
+
+        y[i] = kum * \
+                            numpy.exp(1j * k * 0.5 * v[i]**2 * invle) * \
+                            numpy.exp(- k * v[i] * kiny) * \
+                            numpy.cos(k * v[i] * x / (q * pe * be))
+
+    amplitude = numpy.trapz(y, x=v)
+
+    amplitude *= numpy.sqrt(att / (lambda1 * q * p * be))
+    # omitted phase (see just after equation 30)
+    amplitude *= numpy.exp(1j * k * x ** 2 / 2 / q) * \
+                 numpy.exp(1j * k * s ** 2 / 2 / p) * \
+                 numpy.exp(1j * k * chizero.real * (t1 + t2) / 4)
+    # omitted phase (see just before equation 31)
+    m = g * a / R + gamma * (s / p + a ** 2 / 2 / R)  ## CHECK, shown after eq 30
+    amplitude *= numpy.exp(- 1j * (k / 2 / be) * \
+                           (x / q + t1 * numpy.sin(teta1) / 2 / R + m) ** 2)
+
+    return amplitude
+
 # eq 28 for q=0 (integral in tau) NOT WORKING
 def integral_eq28(x, npoints=1000):
     tau = numpy.linspace(gamma * (x - a), gamma * (x + a), npoints)
     y = numpy.zeros_like(tau, dtype=complex)
+    s = 0
 
     for i in range(tau.size):
-        s = 0      # ????????????????????????????????????
         mu2prime = mu2 * gamma**2
         rho = poisson_ratio / (1 - poisson_ratio)
         a_2 = thickness / numpy.cos(teta) * \
@@ -166,8 +199,8 @@ if __name__ == "__main__":
     # common values
     #
     fig = 4 # 5  # use 100 for flat
-    do_qscan = 1
-    do_xscan = 1
+    do_qscan = 0
+    do_xscan = 0
     do_qzero = 1
 
     R = 2000
@@ -201,7 +234,7 @@ if __name__ == "__main__":
         p = 29000.0  # mm
         alfa_deg = 1.0 # ALWAYS POSITIVE; USE SG TO CHANGE SIGN
         qmax = 10000
-        qposition = 3552.1 # 0.001  # extra q position
+        qposition = 556.3 # 0.001  # extra q position
         factor = 3 # 1.2 # 0.9891
         SG = 1
         npoints_x = 1000
@@ -491,13 +524,15 @@ if __name__ == "__main__":
             yy = numpy.zeros_like(qq)
             if alfa > 0 :
                 for j in range(qq.size):
-                    amplitude, be = sgplus_fig5(0, qq[j], npoints=500)
-                    amplitude *= numpy.sqrt(att / (lambda1 * qq[j] * p * be))
+                    # amplitude, be = sgplus_fig5(0, qq[j], npoints=500)
+                    # amplitude *= numpy.sqrt(att / (lambda1 * qq[j] * p * be))
+                    amplitude = integral_equation31(0, qq[j], npoints=500)
                     yy[j] = numpy.abs(amplitude) ** 2
             else:
                 for j in range(qq.size):
-                    amplitude, be = sgmoins_fig5(0, qq[j], npoints=500)
-                    amplitude *= numpy.sqrt(att / (lambda1 * qq[j] * p * be))
+                    # amplitude, be = sgmoins_fig5(0, qq[j], npoints=500)
+                    # amplitude *= numpy.sqrt(att / (lambda1 * qq[j] * p * be))
+                    amplitude = integral_equation31(0, qq[j], npoints=500)
                     yy[j] = numpy.abs(amplitude) ** 2
             print("Time in calculating q-scan %f s" % (time.time() - t0))
             plot(qq, yy,
@@ -514,18 +549,21 @@ if __name__ == "__main__":
             xx = numpy.linspace(-factor * a, factor * a, npoints_x)
             yy_amplitude = numpy.zeros_like(xx, dtype=complex)
             for j in range(xx.size):
-                amplitude, be = sgplus_fig5(xx[j], qposition, npoints=500)
-                amplitude *= numpy.sqrt(att / (lambda1 * qposition * p * be))
-                # omitted phase (see just after equation 30)
                 s = 0
-                amplitude *= numpy.exp(1j * k * xx[j]**2 / 2 / qposition) * \
-                             numpy.exp(1j * k * s**2 / 2 / p) * \
-                             numpy.exp(1j * k * chizero.real * (t1 + t2) / 4)
-                # omitted phase (see just before equation 31)
-                m = g * a / R + gamma * (s / p + a**2 / 2 / R) ## CHECK, shown after eq 30
-                amplitude *= numpy.exp(- 1j * (k / 2 / be) *\
-                                       ( xx[j] / qposition + t1 * numpy.sin(teta1) / 2 / R + m)**2
-                                       )
+
+                # amplitude, be = sgplus_fig5(xx[j], qposition, npoints=500)
+                # amplitude *= numpy.sqrt(att / (lambda1 * qposition * p * be))
+                # # omitted phase (see just after equation 30)
+                # amplitude *= numpy.exp(1j * k * xx[j]**2 / 2 / qposition) * \
+                #              numpy.exp(1j * k * s**2 / 2 / p) * \
+                #              numpy.exp(1j * k * chizero.real * (t1 + t2) / 4)
+                # # omitted phase (see just before equation 31)
+                # m = g * a / R + gamma * (s / p + a**2 / 2 / R) ## CHECK, shown after eq 30
+                # amplitude *= numpy.exp(- 1j * (k / 2 / be) *\
+                #                        ( xx[j] / qposition + t1 * numpy.sin(teta1) / 2 / R + m)**2
+
+                amplitude =  integral_equation31(xx[j], qposition, npoints=500)
+
                 yy_amplitude[j] = amplitude
             plot(xx, numpy.abs(yy_amplitude)**2,
                  xtitle='x [mm]', ytitle="Intensity", title="alfa=%g deg SG=%d q=%.1f mm" % (alfa_deg, SG, qposition),
