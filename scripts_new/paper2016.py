@@ -59,7 +59,7 @@ def guigay2016_eq24_Dxqp0_new(x, q, npoints=1000):
 
 
 #
-# fig 5
+# fig 5 - Eq. 31
 #
 def sgplus_fig5(x, q, npoints=1000):
     v = numpy.linspace(-a, a, npoints)
@@ -78,7 +78,7 @@ def sgplus_fig5(x, q, npoints=1000):
 
     return numpy.trapz(y, x=v), be
 
-# eq 28 for q=0 (integral in nu)
+# eq 28 for q=0 (integral in tau) NOT WORKING
 def integral_eq28(x, npoints=1000):
     tau = numpy.linspace(gamma * (x - a), gamma * (x + a), npoints)
     y = numpy.zeros_like(tau, dtype=complex)
@@ -113,7 +113,7 @@ def integral_eq28(x, npoints=1000):
 
     return numpy.trapz(y, x=tau)
 
-# eq 30 for q=0 (integral in nu)
+# eq 30 for q=0 (integral in nu)  NOT WORKING BUT AGREEIN WITH integral_eq28
 def integral_eq30(x, npoints=1000):
     v = numpy.linspace(-a, a, npoints)
     y = numpy.zeros_like(v, dtype=complex)
@@ -493,7 +493,6 @@ if __name__ == "__main__":
                 for j in range(qq.size):
                     amplitude, be = sgplus_fig5(0, qq[j], npoints=500)
                     amplitude *= numpy.sqrt(att / (lambda1 * qq[j] * p * be))
-                    # yy[j] = numpy.abs(amplitude ** 2 * att / (lambda1 * qq[j] * p * be))
                     yy[j] = numpy.abs(amplitude) ** 2
             else:
                 for j in range(qq.size):
